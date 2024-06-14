@@ -2835,7 +2835,7 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 [[package]]
 name = "ore-program"
 version = "2.0.0"
-source = "git+https://github.com/regolith-labs/ore?branch=hardhat/v2#891565dff603891e540603d8399c233071f036af"
+source = "git+https://github.com/regolith-labs/ore?rev=32f10563ba257ac1014a5eba000347899fe83d57#32f10563ba257ac1014a5eba000347899fe83d57"
 dependencies = [
  "array-const-fn-init",
  "bs58 0.5.1",
