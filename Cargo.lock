@@ -1506,6 +1506,7 @@ dependencies = [
 [[package]]
 name = "drillx"
 version = "0.2.0"
+source = "git+https://github.com/regolith-labs/drillx?branch=master#ce0330957a2153c9191bdbcbcf4acce031ccd6bf"
 dependencies = [
  "blake3",
  "equix",
@@ -2503,6 +2504,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "more-cli"
+version = "0.5.0"
+dependencies = [
+ "bincode",
+ "bs58 0.5.1",
+ "bytemuck",
+ "cached",
+ "chrono",
+ "clap 4.4.12",
+ "colored",
+ "drillx",
+ "futures",
+ "num_cpus",
+ "ore-program",
+ "rand 0.8.5",
+ "rodio",
+ "solana-cli-config",
+ "solana-client",
+ "solana-program",
+ "solana-rpc-client",
+ "solana-sdk",
+ "solana-transaction-status",
+ "spl-associated-token-account",
+ "spl-token",
+ "tokio",
+]
+
+[[package]]
 name = "mpl-token-metadata"
 version = "4.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2804,36 +2833,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
-name = "ore-cli"
-version = "0.5.0"
-dependencies = [
- "bincode",
- "bs58 0.5.1",
- "bytemuck",
- "cached",
- "chrono",
- "clap 4.4.12",
- "colored",
- "drillx",
- "futures",
- "num_cpus",
- "ore-program",
- "rand 0.8.5",
- "rodio",
- "solana-cli-config",
- "solana-client",
- "solana-program",
- "solana-rpc-client",
- "solana-sdk",
- "solana-transaction-status",
- "spl-associated-token-account",
- "spl-token",
- "tokio",
-]
-
-[[package]]
 name = "ore-program"
 version = "2.0.0"
+source = "git+https://github.com/regolith-labs/ore?branch=hardhat/v2#891565dff603891e540603d8399c233071f036af"
 dependencies = [
  "array-const-fn-init",
  "bs58 0.5.1",

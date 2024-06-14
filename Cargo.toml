@@ -25,7 +25,7 @@ colored = "2.0"
 drillx = { git = "https://github.com/regolith-labs/drillx", branch = "master", version = "0.2.0", optional = false }
 futures = "0.3.30"
 num_cpus = "1.16.0"
-ore = { git = "https://github.com/regolith-labs/ore", branch = "hardhat/v2", package = "ore-program", version = "2.0.0" }
+ore = { git = "https://github.com/regolith-labs/ore", rev = "32f10563ba257ac1014a5eba000347899fe83d57", package = "ore-program", version = "2.0.0" }
 rand = "0.8.4"
 rodio = "0.18.1"
 solana-cli-config = "^1.18"
