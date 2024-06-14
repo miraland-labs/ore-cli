@@ -23,11 +23,11 @@ chrono = "0.4.38"
 clap = { version = "4.4.12", features = ["derive"] }
 colored = "2.0"
 # drillx = { git = "https://github.com/regolith-labs/drillx", rev = "ce0330957a2153c9191bdbcbcf4acce031ccd6bf", optional = false }
-drillx = { git = "https://github.com/regolith-labs/drillx", branch = "master", version = "0.2.0", optional = false }
+drillx = { git = "https://github.com/regolith-labs/drillx", branch = "master", optional = false }
 futures = "0.3.30"
 num_cpus = "1.16.0"
 # ore = { package = "ore-program", git = "https://github.com/regolith-labs/ore", rev = "891565dff603891e540603d8399c233071f036af" }
-ore = { package = "ore-program", git = "https://github.com/regolith-labs/ore", branch = "hardhat/v2", version = "2.0.0" }
+ore = { package = "ore-program", git = "https://github.com/regolith-labs/ore", branch = "hardhat/v2" }
 rand = "0.8.4"
 rodio = "0.18.1"
 solana-cli-config = "^1.18"
