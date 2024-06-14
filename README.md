@@ -1,4 +1,4 @@
-# Ore CLI
+# Miraland release of Ore CLI for Ore V2 derived from Ore CLI
 
 A command line interface for the Ore program.
 
