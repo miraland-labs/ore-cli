@@ -36,14 +36,17 @@ pub struct ClaimArgs {
 
     #[arg(
         long,
-        value_name = "TOKEN_ACCOUNT_ADDRESS",
-        help = "Token account to receive mining rewards."
+        value_name = "WALLET_ADDRESS",
+        help = "Wallet to receive claimed tokens."
     )]
-    pub beneficiary: Option<String>,
+    pub to: Option<String>,
 }
 
 #[derive(Parser, Debug)]
 pub struct CloseArgs {}
+
+#[derive(Parser, Debug)]
+pub struct ConfigArgs {}
 
 #[cfg(feature = "admin")]
 #[derive(Parser, Debug)]
@@ -95,4 +98,14 @@ pub struct StakeArgs {
 #[derive(Parser, Debug)]
 pub struct UpdateAdminArgs {
     pub new_admin: String,
+}
+
+#[derive(Parser, Debug)]
+pub struct UpgradeArgs {
+    #[arg(
+        long,
+        value_name = "AMOUNT",
+        help = "The amount of Ore to upgrade from v1 to v2. Defaults to max."
+    )]
+    pub amount: Option<f64>,
 }

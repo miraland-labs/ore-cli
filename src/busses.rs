@@ -1,5 +1,9 @@
 use crate::Miner;
-use ore::{state::Bus, utils::AccountDeserialize, BUS_ADDRESSES, TOKEN_DECIMALS};
+use ore_api::{
+    consts::{BUS_ADDRESSES, TOKEN_DECIMALS},
+    state::Bus,
+};
+use ore_utils::AccountDeserialize;
 use solana_program::pubkey::Pubkey;
 
 impl Miner {
@@ -59,7 +63,7 @@ impl Miner {
     pub async fn find_bus(&self) -> Pubkey {
         let client = self.rpc_client.clone();
         let mut max_rewards: f64 = 0.;
-        let mut max_ore_bus: Pubkey = Pubkey::default();
+        let mut max_ore_bus: Pubkey = BUS_ADDRESSES[0];
         let data = client.get_multiple_accounts(&BUS_ADDRESSES).await.unwrap();
 
         for (address, account) in BUS_ADDRESSES.iter().zip(data.iter()) {
@@ -77,5 +81,4 @@ impl Miner {
 
         max_ore_bus
     }
-
 }

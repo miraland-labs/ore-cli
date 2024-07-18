@@ -1505,11 +1505,13 @@ dependencies = [
 
 [[package]]
 name = "drillx"
-version = "0.2.0"
-source = "git+https://github.com/regolith-labs/drillx?branch=master#ce0330957a2153c9191bdbcbcf4acce031ccd6bf"
+version = "2.0.0-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bc503e6662deb892b18b41e6d23d2604d7a7804c00d4b84e1d58ecf22daa61c"
 dependencies = [
  "blake3",
  "equix",
+ "serde",
  "solana-program",
  "strum",
 ]
@@ -2321,7 +2323,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.5",
 ]
 
 [[package]]
@@ -2505,7 +2507,7 @@ dependencies = [
 
 [[package]]
 name = "more-cli"
-version = "0.5.0"
+version = "1.0.0-rc1"
 dependencies = [
  "bincode",
  "bs58 0.5.1",
@@ -2517,7 +2519,8 @@ dependencies = [
  "drillx",
  "futures",
  "num_cpus",
- "ore-program",
+ "ore-api",
+ "ore-utils",
  "rand 0.8.5",
  "rodio",
  "solana-cli-config",
@@ -2833,23 +2836,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
-name = "ore-program"
-version = "2.0.0"
-source = "git+https://github.com/regolith-labs/ore?branch=hardhat/v2#891565dff603891e540603d8399c233071f036af"
+name = "ore-api"
+version = "2.0.0-beta.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bad98916e2ec619ac66509b1ec08c3a1b2f404fe46c9775bdd41f6cbe6c9f43"
 dependencies = [
  "array-const-fn-init",
- "bs58 0.5.1",
  "bytemuck",
  "const-crypto",
  "drillx",
  "mpl-token-metadata",
  "num_enum 0.7.2",
+ "ore-utils",
  "shank",
  "solana-program",
  "spl-associated-token-account",
  "spl-token",
  "static_assertions",
  "thiserror",
+]
+
+[[package]]
+name = "ore-utils"
+version = "2.0.0-beta.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a57b6b200cb0a57758d440d3d0bbff3adfd1dfae377fb01bb68da66a767e7dd2"
+dependencies = [
+ "bytemuck",
+ "solana-program",
+ "spl-associated-token-account",
+ "spl-token",
 ]
 
 [[package]]

@@ -1,3 +1,4 @@
+use crate::utils;
 use std::{sync::Arc, time::Instant};
 
 use colored::*;
@@ -5,7 +6,10 @@ use drillx::{
     equix::{self},
     Hash, Solution,
 };
-use ore::{self, state::Proof, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION};
+use ore_api::{
+    consts::{BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION},
+    state::{Config, Proof},
+};
 use rand::Rng;
 use solana_program::pubkey::Pubkey;
 use solana_rpc_client::spinner;
@@ -14,7 +18,7 @@ use solana_sdk::signer::Signer;
 use crate::{
     args::MineArgs,
     send_and_confirm::ComputeBudget,
-    utils::{self, amount_u64_to_string, get_clock, get_config, get_proof},
+    utils::{amount_u64_to_string, get_clock, get_config, get_proof_with_authority},
     Miner,
 };
 
@@ -22,7 +26,7 @@ impl Miner {
     pub async fn mine(&self, args: MineArgs) {
         // Register, if needed.
         let signer = self.signer();
-        self.register().await;
+        self.open().await;
 
         // Check num threads
         self.check_num_cores(args.threads);
@@ -30,7 +34,7 @@ impl Miner {
         // Start mining loop
         loop {
             // Fetch proof
-            let proof = get_proof(&self.rpc_client, signer.pubkey()).await;
+            let proof = get_proof_with_authority(&self.rpc_client, signer.pubkey()).await;
             println!(
                 "\nStake balance: {} ORE",
                 amount_u64_to_string(proof.balance)
@@ -43,11 +47,22 @@ impl Miner {
             let solution = Self::find_hash_par(proof, cutoff_time, args.threads).await;
 
             // Submit most difficult hash
+            let config = get_config(&self.rpc_client).await;
+            let mut compute_budget = 500_000;
             let mut ixs = vec![];
-            if self.needs_reset().await {
-                ixs.push(ore::instruction::reset(signer.pubkey()));
+            if self.should_reset(config).await {
+                compute_budget += 100_000;
+                ixs.push(ore_api::instruction::reset(signer.pubkey()));
             }
-            ixs.push(ore::instruction::mine(
+            if self.should_crown(config, proof).await {
+                compute_budget += 250_000;
+                ixs.push(ore_api::instruction::crown(
+                    signer.pubkey(),
+                    config.top_staker,
+                ))
+            }
+            ixs.push(ore_api::instruction::mine(
+                signer.pubkey(),
                 signer.pubkey(),
                 // MI
                 // find_bus(),
@@ -56,10 +71,10 @@ impl Miner {
             ));
 
             // MI
-            // self.send_and_confirm(&ixs, ComputeBudget::Fixed(500_000), false)
+            // self.send_and_confirm(&ixs, ComputeBudget::Fixed(compute_budget), false)
             //     .await
             //     .ok();
-            if self.send_and_confirm(&ixs, ComputeBudget::Fixed(500_000), false)
+            if self.send_and_confirm(&ixs, ComputeBudget::Fixed(compute_budget), false)
                 .await
                 .is_ok() {
                 if ! self.no_sound_notification {
@@ -103,7 +118,7 @@ impl Miner {
                             // Exit if time has elapsed
                             if nonce % 100 == 0 {
                                 if timer.elapsed().as_secs().ge(&cutoff_time) {
-                                    if best_difficulty.gt(&ore::MIN_DIFFICULTY) {
+                                    if best_difficulty.gt(&ore_api::consts::MIN_DIFFICULTY) {
                                         // Mine until min difficulty has been met
                                         break;
                                     }
@@ -163,9 +178,12 @@ impl Miner {
         }
     }
 
-    async fn needs_reset(&self) -> bool {
+    async fn should_crown(&self, config: Config, proof: Proof) -> bool {
+        proof.balance.gt(&config.max_stake)
+    }
+
+    async fn should_reset(&self, config: Config) -> bool {
         let clock = get_clock(&self.rpc_client).await;
-        let config = get_config(&self.rpc_client).await;
         config
             .last_reset_at
             .saturating_add(EPOCH_DURATION)
