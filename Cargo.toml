@@ -25,8 +25,8 @@ drillx = "2.0.0-beta.1"
 # drillx = { git = "https://github.com/regolith-labs/drillx", branch = "master", features = ["solana"] }
 futures = "0.3.30"
 num_cpus = "1.16.0"
-ore-api = "2.0.0-beta.3"
-ore-utils = "2.0.0-beta.2"
+ore-api = "2.0.0-beta.5"
+ore-utils = "2.0.0-beta.5"
 # ore = { package = "ore-program", git = "https://github.com/regolith-labs/ore", rev = "891565dff603891e540603d8399c233071f036af" }
 # ore = { package = "ore-program", git = "https://github.com/regolith-labs/ore", branch = "hardhat/v2" }
 # ore-api = { git = "https://github.com/regolith-labs/ore", rev = "ce9a701" }
@@ -44,3 +44,8 @@ spl-associated-token-account = { version = "^2.3", features = [
   "no-entrypoint",
 ] }
 tokio = "1.35.1"
+
+# [patch.crates-io]
+# ore-api = { path = "../ore/api" }
+# ore-utils = { path = "../ore/utils" }
+

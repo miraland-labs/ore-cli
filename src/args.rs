@@ -94,12 +94,6 @@ pub struct StakeArgs {
     pub sender: Option<String>,
 }
 
-#[cfg(feature = "admin")]
-#[derive(Parser, Debug)]
-pub struct UpdateAdminArgs {
-    pub new_admin: String,
-}
-
 #[derive(Parser, Debug)]
 pub struct UpgradeArgs {
     #[arg(
