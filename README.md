@@ -1,5 +1,5 @@
-# Miraland release of ORE CLI
-Forked from ORE CLI
+# The Miraland release of the ORE CLI
+Forked from ORE CLI. Tailored by Miraland Labs.
 
 A command line interface for ORE cryptocurrency mining.
 
@@ -8,7 +8,7 @@ A command line interface for ORE cryptocurrency mining.
 To install the CLI, use [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html):
 
 ```sh
-cargo install ore-cli
+cargo install more-cli
 ```
 
 ## Build

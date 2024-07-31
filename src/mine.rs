@@ -203,7 +203,7 @@ impl Miner {
 }
 
 // TODO Pick a better strategy (avoid draining bus)
-fn find_bus() -> Pubkey {
+fn _find_bus() -> Pubkey {
     let i = rand::thread_rng().gen_range(0..BUS_COUNT);
     BUS_ADDRESSES[i]
 }

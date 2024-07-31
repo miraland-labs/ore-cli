@@ -772,9 +772,9 @@ dependencies = [
 
 [[package]]
 name = "bytemuck"
-version = "1.15.0"
+version = "1.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d6d68c57235a3a081186990eca2867354726650f42f7516ca50c28d6281fd15"
+checksum = "102087e286b4677862ea56cf8fc58bb2cdfa8725c40ffb80fe3a008eb7f2fc83"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -1505,9 +1505,9 @@ dependencies = [
 
 [[package]]
 name = "drillx"
-version = "2.0.0-beta.1"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bc503e6662deb892b18b41e6d23d2604d7a7804c00d4b84e1d58ecf22daa61c"
+checksum = "ed194680ad239acd0779eb590f4205da5b8268ab58d31e891d24fb2c44742178"
 dependencies = [
  "blake3",
  "equix",
@@ -2507,7 +2507,7 @@ dependencies = [
 
 [[package]]
 name = "more-cli"
-version = "1.0.0-rc1"
+version = "1.0.0"
 dependencies = [
  "bincode",
  "bs58 0.5.1",
@@ -2837,9 +2837,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "ore-api"
-version = "2.0.0-beta.5"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a0667333ca14f36262dee12e2fd9cd352eef0ada52b7550b4223341ccc2857d"
+checksum = "dbce54d03a5a2da25aafc7e1f2de5f726c051b7bf3f1845fde26025dbf87892b"
 dependencies = [
  "array-const-fn-init",
  "bytemuck",
@@ -2848,7 +2848,6 @@ dependencies = [
  "mpl-token-metadata",
  "num_enum 0.7.2",
  "ore-utils",
- "shank",
  "solana-program",
  "spl-associated-token-account",
  "spl-token",
@@ -2858,9 +2857,9 @@ dependencies = [
 
 [[package]]
 name = "ore-utils"
-version = "2.0.0-beta.5"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f89f215373983ff07fa2407fd07b87e131b82b2c453d2712c325aa1d2537d790"
+checksum = "eae4b8b98f72e6a87bf1ff3c347c81f766051b9b90d46566831b39261c2103fc"
 dependencies = [
  "bytemuck",
  "solana-program",
@@ -3744,52 +3743,6 @@ checksum = "75872d278a8f37ef87fa0ddbda7802605cb18344497949862c0d4dcb291eba60"
 dependencies = [
  "digest 0.10.7",
  "keccak",
-]
-
-[[package]]
-name = "shank"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c9395612d493b69a522725eef78a095f199d43eeb847f4a4b77ec0cacab535"
-dependencies = [
- "shank_macro",
-]
-
-[[package]]
-name = "shank_macro"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8abef069c02e15f62233679b1e71f3152fac10f90b3ff89ebbad6a25b7497754"
-dependencies = [
- "proc-macro2",
- "quote",
- "shank_macro_impl",
- "shank_render",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "shank_macro_impl"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64d3d92bfcc6e08f882f2264d774d1a2f46dc36122adc1b76416ba6405a29a9c"
-dependencies = [
- "anyhow",
- "proc-macro2",
- "quote",
- "serde",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "shank_render"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a2ea9c6dd95ea311b3b81e63cf4e9c808ed04b098819e6d2c4b1a467d587203"
-dependencies = [
- "proc-macro2",
- "quote",
- "shank_macro_impl",
 ]
 
 [[package]]
