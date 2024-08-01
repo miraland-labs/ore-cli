@@ -135,6 +135,8 @@ impl Miner {
                                                 }
                                             }
                                         }
+                                    } else { // MI
+                                        println!("No status");
                                     }
                                 }
                             }
