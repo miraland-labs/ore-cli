@@ -166,7 +166,7 @@ impl Miner {
             // Retry
             std::thread::sleep(Duration::from_millis(GATEWAY_DELAY));
             attempts += 1;
-            if attempts > GATEWAY_RETRIES {
+            if attempts >= GATEWAY_RETRIES {
                 progress_bar.finish_with_message(format!("{}: Max retries", "ERROR".bold().red()));
                 return Err(ClientError {
                     request: None,
