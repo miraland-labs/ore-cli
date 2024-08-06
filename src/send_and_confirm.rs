@@ -27,7 +27,9 @@ const _SIMULATION_RETRIES: usize = 4;
 const GATEWAY_RETRIES: usize = 50; // MI, vanilla: 150, keep retries * delay same
 const CONFIRM_RETRIES: usize = 1;
 
-const CONFIRM_DELAY: u64 = 0;
+// MI, vanilla, millis
+// const CONFIRM_DELAY: u64 = 0;
+const CONFIRM_DELAY: u64 = 500;
 const GATEWAY_DELAY: u64 = 900; // MI, vanilla: 300, keep retries * delay same
 
 pub enum ComputeBudget {
