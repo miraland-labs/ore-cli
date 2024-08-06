@@ -24,13 +24,13 @@ const MIN_SOL_BALANCE: f64 = 0.005;
 
 const RPC_RETRIES: usize = 0;
 const _SIMULATION_RETRIES: usize = 4;
-const GATEWAY_RETRIES: usize = 50; // MI, vanilla: 150, keep retries * delay same
+const GATEWAY_RETRIES: usize = 75; // MI, vanilla: 150, keep retries * delay same
 const CONFIRM_RETRIES: usize = 1;
 
 // MI, vanilla, millis
 // const CONFIRM_DELAY: u64 = 0;
-const CONFIRM_DELAY: u64 = 1200;
-const GATEWAY_DELAY: u64 = 300; // MI, vanilla: 300, keep retries * delay same
+const CONFIRM_DELAY: u64 = 1000;
+const GATEWAY_DELAY: u64 = 600; // MI, vanilla: 300, keep retries * delay same
 
 pub enum ComputeBudget {
     Dynamic,
