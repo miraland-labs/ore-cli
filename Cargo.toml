@@ -1,6 +1,6 @@
 [package]
 name = "more-cli"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "A command line interface for ORE cryptocurrency mining. Tailored by Miraland Labs."
@@ -37,6 +37,7 @@ ore-utils = "2.1.0"
 # ore-api = { git = "https://github.com/regolith-labs/ore", rev = "ce9a701" }
 # ore-utils = { git = "https://github.com/regolith-labs/ore", rev = "ce9a701" }
 rand = "0.8.4"
+reqwest = { version = "0.12", features = ["json"] }
 rodio = "0.18.1"
 solana-cli-config = "^1.18"
 solana-client = "^1.18"
@@ -44,6 +45,7 @@ solana-program = "^1.18"
 solana-rpc-client = "^1.18"
 solana-sdk = "^1.18"
 solana-transaction-status = "^1.18"
+serde_json = "1.0"
 spl-token = { version = "^4", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "^2.3", features = [
   "no-entrypoint",
