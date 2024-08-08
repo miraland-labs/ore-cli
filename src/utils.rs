@@ -43,10 +43,28 @@ pub async fn get_proof(client: &RpcClient, address: Pubkey) -> Proof {
 }
 
 pub async fn get_clock(client: &RpcClient) -> Clock {
-    let data = client
+    // MI: vanilla
+    // let data = client
+    //     .get_account_data(&sysvar::clock::ID)
+    //     .await
+    //     .expect("Failed to get miner account");
+
+    let data: Vec<u8>;
+    loop {
+        match client
         .get_account_data(&sysvar::clock::ID)
-        .await
-        .expect("Failed to get miner account");
+        .await {
+            Ok(d) => {
+                data = d;
+                break;
+            }
+            Err(e) => {
+                println!("get clock error: {:?}", e);
+                println!("retry to get clock...");
+            }
+        }
+    }
+
     bincode::deserialize::<Clock>(&data).expect("Failed to deserialize clock")
 }
 
