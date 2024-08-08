@@ -72,15 +72,13 @@ impl Miner {
         }
 
         let priority_fee = match &self.dynamic_fee_url {
-            Some(_) => {
-                self.dynamic_fee().await
-            }
-            None => {
-                self.priority_fee.unwrap_or(0)
-            }
+            Some(_) => self.dynamic_fee().await,
+            None => self.priority_fee.unwrap_or(0),
         };
 
-        final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(priority_fee));
+        final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
+            priority_fee,
+        ));
         final_ixs.extend_from_slice(ixs);
 
         // Build tx
@@ -93,11 +91,23 @@ impl Miner {
         };
         let mut tx = Transaction::new_with_payer(&final_ixs, Some(&fee_payer.pubkey()));
 
+        // MI vanilla
+        // // Sign tx
+        // let (hash, _slot) = client
+        //     .get_latest_blockhash_with_commitment(self.rpc_client.commitment())
+        //     .await
+        //     .unwrap();
+
         // Sign tx
-        let (hash, _slot) = client
-            .get_latest_blockhash_with_commitment(self.rpc_client.commitment())
-            .await
-            .unwrap();
+        let (hash, _slot) = loop {
+            match client
+                .get_latest_blockhash_with_commitment(self.rpc_client.commitment())
+                .await
+            {
+                Ok((hash, _slot)) => break (hash, _slot),
+                Err(_) => {}
+            }
+        };
 
         if signer.pubkey() == fee_payer.pubkey() {
             tx.sign(&[&signer], hash);
@@ -108,10 +118,17 @@ impl Miner {
         // Submit tx
         let mut attempts = 0;
         loop {
-
             let message = match &self.dynamic_fee_url {
-                Some(_) => format!("Submitting transaction... (attempt {} with dynamic priority fee of {} via {})", attempts, priority_fee, self.dynamic_fee_strategy.as_ref().unwrap()),
-                None => format!("Submitting transaction... (attempt {} with static priority fee of {})", attempts, priority_fee),
+                Some(_) => format!(
+                    "Submitting transaction... (attempt {} with dynamic priority fee of {} via {})",
+                    attempts,
+                    priority_fee,
+                    self.dynamic_fee_strategy.as_ref().unwrap()
+                ),
+                None => format!(
+                    "Submitting transaction... (attempt {} with static priority fee of {})",
+                    attempts, priority_fee
+                ),
             };
 
             progress_bar.set_message(message);
@@ -156,7 +173,8 @@ impl Miner {
                                                 }
                                             }
                                         }
-                                    } else { // MI
+                                    } else {
+                                        // MI
                                         println!("No status");
                                     }
                                 }
