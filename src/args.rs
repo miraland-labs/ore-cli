@@ -59,7 +59,7 @@ pub struct MineArgs {
         short,
         value_name = "CORES_COUNT",
         help = "The number of CPU cores to allocate to mining",
-        default_value = "1"
+        // default_value = "1"
     )]
     pub cores: Option<u64>,
 
@@ -68,7 +68,7 @@ pub struct MineArgs {
         short,
         value_name = "THREAD_COUNT",
         help = "The number of CPU threads to allocate to mining",
-        default_value = "1"
+        // default_value = "1"
     )]
     pub threads: Option<u64>,
 
