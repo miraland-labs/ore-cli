@@ -24,11 +24,11 @@ const MIN_SOL_BALANCE: f64 = 0.005;
 
 const RPC_RETRIES: usize = 0;
 const _SIMULATION_RETRIES: usize = 4;
-const GATEWAY_RETRIES: usize = 150; // MI, vanilla: 150, keep retries * delay same
-const CONFIRM_RETRIES: usize = 1;
+const GATEWAY_RETRIES: usize = 150;
+const CONFIRM_RETRIES: usize = 8; // MI, 1 in version
 
-const CONFIRM_DELAY: u64 = 0;
-const GATEWAY_DELAY: u64 = 300; // MI, vanilla: 300, keep retries * delay same
+const CONFIRM_DELAY: u64 = 500; // MI, 0 in version 1
+const GATEWAY_DELAY: u64 = 0; // MI, 300 in version 1
 
 pub enum ComputeBudget {
     Dynamic,
@@ -42,24 +42,14 @@ impl Miner {
         compute_budget: ComputeBudget,
         skip_confirm: bool,
     ) -> ClientResult<Signature> {
-        let progress_bar = spinner::new_progress_bar();
         let signer = self.signer();
         let client = self.rpc_client.clone();
         let fee_payer = self.fee_payer();
 
         // Return error, if balance is zero
-        if let Ok(balance) = client.get_balance(&fee_payer.pubkey()).await {
-            if balance <= sol_to_lamports(MIN_SOL_BALANCE) {
-                panic!(
-                    "{} Insufficient balance: {} SOL\nPlease top up with at least {} SOL",
-                    "ERROR".bold().red(),
-                    lamports_to_sol(balance),
-                    MIN_SOL_BALANCE
-                );
-            }
-        }
+        self.check_balance().await;
 
-        // Set compute units
+        // Set compute budget
         let mut final_ixs = vec![];
         match compute_budget {
             ComputeBudget::Dynamic => {
@@ -71,14 +61,12 @@ impl Miner {
             }
         }
 
-        let priority_fee = match &self.dynamic_fee_url {
-            Some(_) => self.dynamic_fee().await,
-            None => self.priority_fee.unwrap_or(0),
-        };
-
+        // Set compute unit price
         final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
-            priority_fee,
+            self.priority_fee.unwrap_or(0),
         ));
+
+        // Add in user instructions
         final_ixs.extend_from_slice(ixs);
 
         // Build tx
@@ -91,48 +79,46 @@ impl Miner {
         };
         let mut tx = Transaction::new_with_payer(&final_ixs, Some(&fee_payer.pubkey()));
 
-        // MI vanilla
-        // // Sign tx
-        // let (hash, _slot) = client
-        //     .get_latest_blockhash_with_commitment(self.rpc_client.commitment())
-        //     .await
-        //     .unwrap();
-
-        // Sign tx
-        let (hash, _slot) = loop {
-            match client
-                .get_latest_blockhash_with_commitment(self.rpc_client.commitment())
-                .await
-            {
-                Ok((hash, _slot)) => break (hash, _slot),
-                Err(_) => {}
-            }
-        };
-
-        if signer.pubkey() == fee_payer.pubkey() {
-            tx.sign(&[&signer], hash);
-        } else {
-            tx.sign(&[&signer, &fee_payer], hash);
-        }
-
         // Submit tx
+        let progress_bar = spinner::new_progress_bar();
         let mut attempts = 0;
         loop {
-            let message = match &self.dynamic_fee_url {
-                Some(_) => format!(
-                    "Submitting transaction... (attempt {} with dynamic priority fee of {} via {})",
-                    attempts,
-                    priority_fee,
-                    self.dynamic_fee_strategy.as_ref().unwrap()
-                ),
-                None => format!(
-                    "Submitting transaction... (attempt {} with static priority fee of {})",
-                    attempts, priority_fee
-                ),
-            };
+            progress_bar.set_message(format!("Submitting transaction... (attempt {})", attempts,));
 
-            progress_bar.set_message(message);
+            // Sign tx with a new blockhash (after approximately ~45 sec)
+            if attempts % 10 == 0 {
+                // Reset the compute unit price
+                if self.dynamic_fee {
+                    let fee = if let Some(fee) = self.dynamic_fee().await {
+                        progress_bar.println(format!("  Priority fee: {} microlamports", fee));
+                        fee
+                    } else {
+                        let fee = self.priority_fee.unwrap_or(0);
+                        progress_bar.println(format!("  {} Dynamic fees not supported by this RPC. Falling back to static value: {} microlamports", "WARNING".bold().yellow(), fee));
+                        fee
+                    };
+                    final_ixs.remove(1);
+                    final_ixs.insert(1, ComputeBudgetInstruction::set_compute_unit_price(fee));
+                }
 
+                // Resign tx
+                let (hash, _slot) = loop {
+                    match client
+                        .get_latest_blockhash_with_commitment(self.rpc_client.commitment())
+                        .await
+                    {
+                        Ok((hash, _slot)) => break (hash, _slot),
+                        Err(_) => {}
+                    }
+                };
+                if signer.pubkey() == fee_payer.pubkey() {
+                    tx.sign(&[&signer], hash);
+                } else {
+                    tx.sign(&[&signer, &fee_payer], hash);
+                }
+            }
+
+            // Send transaction
             match client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     // Skip confirmation
@@ -141,7 +127,7 @@ impl Miner {
                         return Ok(sig);
                     }
 
-                    // Confirm the tx landed
+                    // Confirm transaction
                     for _ in 0..CONFIRM_RETRIES {
                         std::thread::sleep(Duration::from_millis(CONFIRM_DELAY));
                         match client.get_signature_statuses(&[sig]).await {
@@ -211,6 +197,24 @@ impl Miner {
                     request: None,
                     kind: ClientErrorKind::Custom("Max retries".into()),
                 });
+            }
+        }
+    }
+
+    pub async fn check_balance(&self) {
+        // Throw error if balance is less than min
+        if let Ok(balance) = self
+            .rpc_client
+            .get_balance(&self.fee_payer().pubkey())
+            .await
+        {
+            if balance <= sol_to_lamports(MIN_SOL_BALANCE) {
+                panic!(
+                    "{} Insufficient balance: {} SOL\nPlease top up with at least {} SOL",
+                    "ERROR".bold().red(),
+                    lamports_to_sol(balance),
+                    MIN_SOL_BALANCE
+                );
             }
         }
     }

@@ -6,16 +6,17 @@ mod claim;
 mod close;
 mod config;
 mod cu_limits;
+mod dynamic_fee;
 #[cfg(feature = "admin")]
 mod initialize;
 mod mine;
 mod open;
+mod proof;
 mod rewards;
 mod send_and_confirm;
 mod stake;
 mod upgrade;
 mod utils;
-mod dynamic_fee;
 
 use std::sync::Arc;
 
@@ -31,8 +32,7 @@ struct Miner {
     pub keypair_filepath: Option<String>,
     pub priority_fee: Option<u64>,
     pub dynamic_fee_url: Option<String>,
-    pub dynamic_fee_strategy: Option<String>,
-    pub dynamic_fee_max: Option<u64>,
+    pub dynamic_fee: bool,
     pub rpc_client: Arc<RpcClient>,
     pub fee_payer_filepath: Option<String>,
     pub no_sound_notification: bool,
@@ -60,6 +60,9 @@ enum Commands {
 
     #[command(about = "Start mining")]
     Mine(MineArgs),
+
+    #[command(about = "Fetch a proof account by address")]
+    Proof(ProofArgs),
 
     #[command(about = "Fetch the current reward rate for each difficulty level")]
     Rewards(RewardsArgs),
@@ -98,7 +101,7 @@ struct Args {
     #[arg(
         long,
         value_name = "KEYPAIR_FILEPATH",
-        help = "Filepath to keypair to use",
+        help = "Filepath to keypair to use.",
         global = true
     )]
     keypair: Option<String>,
@@ -106,16 +109,16 @@ struct Args {
     #[arg(
         long,
         value_name = "FEE_PAYER_FILEPATH",
-        help = "Filepath to keypair to use for fee payer",
+        help = "Filepath to keypair to use as transaction fee payer.",
         global = true
     )]
-    fee_payer_filepath: Option<String>,
+    fee_payer: Option<String>,
 
     #[arg(
         long,
         value_name = "MICROLAMPORTS",
-        help = "Number of microlamports to pay as priority fee per transaction",
-        default_value = "0",
+        help = "Price to pay for compute units. If dynamic fees are being used, this value will be the max.",
+        default_value = "500000",
         global = true
     )]
     priority_fee: Option<u64>,
@@ -123,28 +126,13 @@ struct Args {
     #[arg(
         long,
         value_name = "DYNAMIC_FEE_URL",
-        help = "RPC URL to use for dynamic fee estimation. If set will enable dynamic fee pricing instead of static priority fee pricing.",
+        help = "RPC URL to use for dynamic fee estimation.",
         global = true
     )]
     dynamic_fee_url: Option<String>,
 
-    #[arg(
-        long,
-        value_name = "DYNAMIC_FEE_STRATEGY",
-        help = "Strategy to use for dynamic fee estimation. Must be one of 'helius', or 'triton'.",
-        default_value = "helius",
-        global = true
-    )]
-    dynamic_fee_strategy: Option<String>,
-    
-    #[arg(
-        long,
-        value_name = "DYNAMIC_FEE_MAX",
-        help = "Maximum priority fee to use for dynamic fee estimation.",
-        default_value = "500000",
-        global = true
-    )]
-    dynamic_fee_max: Option<u64>,
+    #[arg(long, help = "Use dynamic priority fees", global = true)]
+    dynamic_fee: bool,
     
     /// Mine with sound notification on/off
     #[arg(
@@ -179,7 +167,7 @@ async fn main() {
     // Initialize miner.
     let cluster = args.rpc.unwrap_or(cli_config.json_rpc_url);
     let default_keypair = args.keypair.unwrap_or(cli_config.keypair_path.clone());
-    let fee_payer_filepath = args.fee_payer_filepath.unwrap_or(cli_config.keypair_path.clone());
+    let fee_payer_filepath = args.fee_payer.unwrap_or(default_keypair.clone());
     let rpc_client = RpcClient::new_with_commitment(cluster, CommitmentConfig::confirmed());
 
     let miner = Arc::new(Miner::new(
@@ -187,8 +175,7 @@ async fn main() {
         args.priority_fee,
         Some(default_keypair),
         args.dynamic_fee_url,
-        args.dynamic_fee_strategy,
-        args.dynamic_fee_max,
+        args.dynamic_fee,
         Some(fee_payer_filepath),
         args.no_sound_notification,
     ));
@@ -216,6 +203,9 @@ async fn main() {
         Commands::Mine(args) => {
             miner.mine(args).await;
         }
+        Commands::Proof(args) => {
+            miner.proof(args).await;
+        }
         Commands::Rewards(_) => {
             miner.rewards().await;
         }
@@ -238,8 +228,7 @@ impl Miner {
         priority_fee: Option<u64>,
         keypair_filepath: Option<String>,
         dynamic_fee_url: Option<String>,
-        dynamic_fee_strategy: Option<String>,
-        dynamic_fee_max: Option<u64>,
+        dynamic_fee: bool,
         fee_payer_filepath: Option<String>,
         no_sound_notification: bool,
     ) -> Self {
@@ -248,8 +237,7 @@ impl Miner {
             keypair_filepath,
             priority_fee,
             dynamic_fee_url,
-            dynamic_fee_strategy,
-            dynamic_fee_max,
+            dynamic_fee,
             fee_payer_filepath,
             no_sound_notification,
         }

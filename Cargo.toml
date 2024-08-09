@@ -1,6 +1,6 @@
 [package]
 name = "more-cli"
-version = "1.1.2"
+version = "2.0.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "A command line interface for ORE cryptocurrency mining. Tailored by Miraland Labs."
@@ -26,6 +26,7 @@ cached = "0.46.1"
 chrono = "0.4.38"
 clap = { version = "4.4.12", features = ["derive"] }
 colored = "2.0"
+core_affinity = "0.8.1" 
 drillx = "2.0.0"
 # drillx = { git = "https://github.com/regolith-labs/drillx", branch = "master", features = ["solana"] }
 futures = "0.3.30"
@@ -51,6 +52,7 @@ spl-associated-token-account = { version = "^2.3", features = [
   "no-entrypoint",
 ] }
 tokio = "1.35.1"
+url = "2.5"
 
 # [patch.crates-io]
 # drillx = { path = "../drillx/drillx" }

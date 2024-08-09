@@ -1,4 +1,7 @@
-use std::io::{Cursor, Read};
+use std::{
+    io::{Cursor, Read},
+    time::Duration,
+};
 
 use cached::proc_macro::cached;
 use ore_api::{
@@ -34,6 +37,20 @@ pub async fn get_proof_with_authority(client: &RpcClient, authority: Pubkey) -> 
     get_proof(client, proof_address).await
 }
 
+pub async fn get_updated_proof_with_authority(
+    client: &RpcClient,
+    authority: Pubkey,
+    lash_hash_at: i64,
+) -> Proof {
+    loop {
+        let proof = get_proof_with_authority(client, authority).await;
+        if proof.last_hash_at.gt(&lash_hash_at) {
+            return proof;
+        }
+        std::thread::sleep(Duration::from_millis(1000));
+    }
+}
+
 pub async fn get_proof(client: &RpcClient, address: Pubkey) -> Proof {
     let data = client
         .get_account_data(&address)
@@ -51,9 +68,7 @@ pub async fn get_clock(client: &RpcClient) -> Clock {
 
     let data: Vec<u8>;
     loop {
-        match client
-        .get_account_data(&sysvar::clock::ID)
-        .await {
+        match client.get_account_data(&sysvar::clock::ID).await {
             Ok(d) => {
                 data = d;
                 break;
@@ -106,7 +121,7 @@ pub fn play_sound() {
             let cursor = Cursor::new(bytes);
             sink.append(rodio::Decoder::new(cursor).unwrap());
             sink.sleep_until_end();
-        },
+        }
         Err(_) => print!("\x07"),
     }
 }

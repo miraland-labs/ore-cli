@@ -16,10 +16,10 @@ pub struct BenchmarkArgs {
         long,
         short,
         value_name = "THREAD_COUNT",
-        help = "The number of threads to use during the benchmark",
+        help = "The number of cores to use during the benchmark",
         default_value = "1"
     )]
-    pub threads: u64,
+    pub cores: u64,
 }
 
 #[derive(Parser, Debug)]
@@ -54,7 +54,15 @@ pub struct InitializeArgs {}
 
 #[derive(Parser, Debug)]
 pub struct MineArgs {
-    // #[cfg(not(feature = "gpu"))]
+    #[arg(
+        long,
+        short,
+        value_name = "CORES_COUNT",
+        help = "The number of CPU cores to allocate to mining",
+        default_value = "1"
+    )]
+    pub cores: Option<u64>,
+
     #[arg(
         long,
         short,
@@ -62,7 +70,7 @@ pub struct MineArgs {
         help = "The number of CPU threads to allocate to mining",
         default_value = "1"
     )]
-    pub threads: u64,
+    pub threads: Option<u64>,
 
     #[arg(
         long,
@@ -72,6 +80,16 @@ pub struct MineArgs {
         default_value = "5"
     )]
     pub buffer_time: u64,
+}
+
+#[derive(Parser, Debug)]
+pub struct ProofArgs {
+    #[arg(
+        index = 0,
+        value_name = "ADDRESS",
+        help = "The address of the proof to fetch"
+    )]
+    pub address: Option<String>,
 }
 
 #[derive(Parser, Debug)]

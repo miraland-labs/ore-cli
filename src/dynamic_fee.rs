@@ -3,113 +3,127 @@ use crate::Miner;
 use ore_api::consts::BUS_ADDRESSES;
 use reqwest::Client;
 use serde_json::{json, Value};
+use url::Url;
+
+enum FeeStrategy {
+    Alchemy,
+    Helius,
+    Triton,
+}
 
 impl Miner {
-    pub async fn dynamic_fee(&self) -> u64 {
-        let ore_addresses: Vec<String> =
-            std::iter::once("oreV2ZymfyeXgNgBdqMkumTqqAprVqgBWQfoYkrtKWQ".to_string())
-                .chain(BUS_ADDRESSES.iter().map(|pubkey| pubkey.to_string()))
-                .collect();
+    pub async fn dynamic_fee(&self) -> Option<u64> {
+        // Get url
+        let rpc_url = self
+            .dynamic_fee_url
+            .clone()
+            .unwrap_or(self.rpc_client.url());
 
-        match &self.dynamic_fee_strategy {
-            None => self.priority_fee.unwrap_or(0),
-            Some(strategy) => {
-                let client = Client::new();
+        // Select fee estiamte strategy
+        let host = Url::parse(&rpc_url)
+            .unwrap()
+            .host_str()
+            .unwrap()
+            .to_string();
+        let strategy = if host.contains("helius-rpc.com") {
+            FeeStrategy::Helius
+        } else if host.contains("rpcpool.com") {
+            FeeStrategy::Triton
+        } else if host.contains("alchemy.com") {
+            FeeStrategy::Alchemy
+        } else {
+            return None;
+        };
 
-                let body = match strategy.as_str() {
-                    "helius" => {
-                        json!({
-                            "jsonrpc": "2.0",
-                            "id": "priority-fee-estimate",
-                            "method": "getPriorityFeeEstimate",
-                            "params": [{
-                                "accountKeys": ore_addresses,
-                                "options": {
-                                    "recommended": true
-                                }
-                            }]
-                        })
-                    }
-                    "triton" => {
-                        json!({
-                            "jsonrpc": "2.0",
-                            "id": "priority-fee-estimate",
-                            "method": "getRecentPrioritizationFees",
-                            "params": [
-                                ore_addresses,
-                                {
-                                    "percentile": 5000,
-                                }
-                            ]
-                        })
-                    }
-                    "alchemy" => {
-                        json!({
-                            "jsonrpc": "2.0",
-                            "id": "priority-fee-estimate",
-                            "method": "getRecentPrioritizationFees",
-                            "params": [
-                                ore_addresses,
-                            ]
-                        })
-                    }
-                    _ => return self.priority_fee.unwrap_or(0),
-                };
-
-                let response: Value = client
-                    .post(self.dynamic_fee_url.as_ref().unwrap())
-                    .json(&body)
-                    .send()
-                    .await
-                    .unwrap()
-                    .json()
-                    .await
-                    .unwrap();
-
-                let calculated_fee =
-                    match strategy.as_str() {
-                        "helius" => response["result"]["priorityFeeEstimate"]
-                            .as_f64()
-                            .map(|fee| fee as u64)
-                            .ok_or_else(|| {
-                                format!("Failed to parse priority fee. Response: {:?}", response)
-                            })
-                            .unwrap(),
-                        "triton" => response["result"]
-                            .as_array()
-                            .and_then(|arr| arr.last())
-                            .and_then(|last| last["prioritizationFee"].as_u64())
-                            .ok_or_else(|| {
-                                format!("Failed to parse priority fee. Response: {:?}", response)
-                            })
-                            .unwrap(),
-                        "alchemy" => response["result"]
-                            .as_array()
-                            .and_then(|arr| {
-                                Some(
-                                    arr.into_iter()
-                                        .map(|v| v["prioritizationFee"].as_u64().unwrap())
-                                        .collect::<Vec<u64>>(),
-                                )
-                            })
-                            .and_then(|fees| {
-                                Some((fees.iter().sum::<u64>() as f32 / fees.len() as f32).ceil()
-                                    as u64)
-                            })
-                            .ok_or_else(|| {
-                                format!("Failed to parse priority fee. Response: {:?}", response)
-                            })
-                            .unwrap(),
-                        _ => return self.priority_fee.unwrap_or(0),
-                    };
-
-                // Check if the calculated fee is higher than self.dynamic_fee_max
-                if let Some(max_fee) = self.dynamic_fee_max {
-                    calculated_fee.min(max_fee)
-                } else {
-                    calculated_fee
-                }
+        // Build fee estimate request
+        let client = Client::new();
+        let ore_addresses: Vec<String> = std::iter::once(ore_api::ID.to_string())
+            .chain(BUS_ADDRESSES.iter().map(|pubkey| pubkey.to_string()))
+            .collect();
+        let body = match strategy {
+            FeeStrategy::Helius => {
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": "priority-fee-estimate",
+                    "method": "getPriorityFeeEstimate",
+                    "params": [{
+                        "accountKeys": ore_addresses,
+                        "options": {
+                            "recommended": true
+                        }
+                    }]
+                })
             }
+            FeeStrategy::Triton => {
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": "priority-fee-estimate",
+                    "method": "getRecentPrioritizationFees",
+                    "params": [
+                        ore_addresses,
+                        {
+                            "percentile": 5000,
+                        }
+                    ]
+                })
+            }
+            FeeStrategy::Alchemy => {
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": "priority-fee-estimate",
+                    "method": "getRecentPrioritizationFees",
+                    "params": [
+                        ore_addresses,
+                    ]
+                })
+            }
+        };
+
+        // Send request
+        let response: Value = client
+            .post(rpc_url)
+            .json(&body)
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+
+        // Parse response
+        let calculated_fee = match strategy {
+            FeeStrategy::Helius => response["result"]["priorityFeeEstimate"]
+                .as_f64()
+                .map(|fee| fee as u64)
+                .ok_or_else(|| format!("Failed to parse priority fee. Response: {:?}", response))
+                .unwrap(),
+            FeeStrategy::Triton => response["result"]
+                .as_array()
+                .and_then(|arr| arr.last())
+                .and_then(|last| last["prioritizationFee"].as_u64())
+                .ok_or_else(|| format!("Failed to parse priority fee. Response: {:?}", response))
+                .unwrap(),
+            FeeStrategy::Alchemy => response["result"]
+                .as_array()
+                .and_then(|arr| {
+                    Some(
+                        arr.into_iter()
+                            .map(|v| v["prioritizationFee"].as_u64().unwrap())
+                            .collect::<Vec<u64>>(),
+                    )
+                })
+                .and_then(|fees| {
+                    Some((fees.iter().sum::<u64>() as f32 / fees.len() as f32).ceil() as u64)
+                })
+                .ok_or_else(|| format!("Failed to parse priority fee. Response: {:?}", response))
+                .unwrap(),
+        };
+
+        // Check if the calculated fee is higher than max
+        if let Some(max_fee) = self.priority_fee {
+            Some(calculated_fee.min(max_fee))
+        } else {
+            Some(calculated_fee)
         }
     }
 }
