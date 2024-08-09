@@ -129,6 +129,9 @@ impl Miner {
                 if !self.no_sound_notification {
                     utils::play_sound();
                 }
+            } else {
+                // MI: when some error like 0x0 (need reset) occurs, we need to exit loop to avoid hang-up
+                return;
             }
         }
     }
@@ -192,7 +195,10 @@ impl Miner {
                                             // delay extra 30 secs
                                             progress_bar.set_message(format!(
                                                 "Mining... ({} sec surpassed)",
-                                                timer.elapsed().as_secs().saturating_sub(cutoff_time),
+                                                timer
+                                                    .elapsed()
+                                                    .as_secs()
+                                                    .saturating_sub(cutoff_time),
                                             ));
                                             if timer
                                                 .elapsed()
@@ -202,7 +208,7 @@ impl Miner {
                                                 break;
                                             }
                                         }
-                                    } 
+                                    }
                                 } else if i.id == 0 {
                                     progress_bar.set_message(format!(
                                         "Mining... ({} sec remaining)",
@@ -294,7 +300,10 @@ impl Miner {
                                             // delay extra 30 secs
                                             progress_bar.set_message(format!(
                                                 "Mining... ({} sec surpassed)",
-                                                timer.elapsed().as_secs().saturating_sub(cutoff_time),
+                                                timer
+                                                    .elapsed()
+                                                    .as_secs()
+                                                    .saturating_sub(cutoff_time),
                                             ));
                                             if timer
                                                 .elapsed()
