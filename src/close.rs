@@ -37,7 +37,7 @@ impl Miner {
 
         // Submit close transaction
         let ix = ore_api::instruction::close(signer.pubkey());
-        self.send_and_confirm(&[ix], ComputeBudget::Dynamic, false)
+        self.send_and_confirm(&[ix], ComputeBudget::Dynamic, false, None)
             .await
             .ok();
     }

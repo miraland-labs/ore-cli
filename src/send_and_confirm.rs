@@ -41,6 +41,7 @@ impl Miner {
         ixs: &[Instruction],
         compute_budget: ComputeBudget,
         skip_confirm: bool,
+        difficulty: Option<u32>, // MI
     ) -> ClientResult<Signature> {
         let signer = self.signer();
         let client = self.rpc_client.clone();
@@ -90,8 +91,19 @@ impl Miner {
                 // Reset the compute unit price
                 if self.dynamic_fee {
                     let fee = if let Some(fee) = self.dynamic_fee().await {
-                        progress_bar.println(format!("  Priority fee: {} microlamports", fee));
-                        fee
+                        let mut prio_fee = fee;
+                        // MI: upbound 300K for diff > 21
+                        if let Some(difficulty) = difficulty {
+                            if difficulty > 21 {
+                                prio_fee =
+                                    300_000.min(prio_fee.saturating_mul(15).saturating_div(10));
+                            } else if difficulty < 18 {
+                                // prio_fee = 5000.max(prio_fee.saturating_mul(2).saturating_div(3));
+                                // keep priority fee recommendation
+                            }
+                        }
+                        progress_bar.println(format!("  Priority fee: {} microlamports", prio_fee));
+                        prio_fee
                     } else {
                         let fee = self.priority_fee.unwrap_or(0);
                         progress_bar.println(format!("  {} Dynamic fees not supported by this RPC. Falling back to static value: {} microlamports", "WARNING".bold().yellow(), fee));

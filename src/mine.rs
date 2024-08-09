@@ -117,7 +117,12 @@ impl Miner {
             //     .await
             //     .ok();
             if self
-                .send_and_confirm(&ixs, ComputeBudget::Fixed(compute_budget), false)
+                .send_and_confirm(
+                    &ixs,
+                    ComputeBudget::Fixed(compute_budget),
+                    false,
+                    Some(solution.to_hash().difficulty()),
+                )
                 .await
                 .is_ok()
             {
@@ -180,9 +185,24 @@ impl Miner {
                             if nonce % 100 == 0 {
                                 if timer.elapsed().as_secs().ge(&cutoff_time) {
                                     if best_difficulty.ge(&min_difficulty) {
-                                        // Mine until min difficulty has been met
-                                        break;
-                                    }
+                                        if best_difficulty >= 18 {
+                                            // Mine until min difficulty has been met
+                                            break;
+                                        } else {
+                                            // delay extra 30 secs
+                                            progress_bar.set_message(format!(
+                                                "Mining... ({} sec surpassed)",
+                                                timer.elapsed().as_secs().saturating_sub(cutoff_time),
+                                            ));
+                                            if timer
+                                                .elapsed()
+                                                .as_secs()
+                                                .ge(&cutoff_time.saturating_add(29))
+                                            {
+                                                break;
+                                            }
+                                        }
+                                    } 
                                 } else if i.id == 0 {
                                     progress_bar.set_message(format!(
                                         "Mining... ({} sec remaining)",
@@ -267,8 +287,23 @@ impl Miner {
                             if nonce % 100 == 0 {
                                 if timer.elapsed().as_secs().ge(&cutoff_time) {
                                     if best_difficulty.ge(&min_difficulty) {
-                                        // Mine until min difficulty has been met
-                                        break;
+                                        if best_difficulty >= 18 {
+                                            // Mine until min difficulty has been met
+                                            break;
+                                        } else {
+                                            // delay extra 30 secs
+                                            progress_bar.set_message(format!(
+                                                "Mining... ({} sec surpassed)",
+                                                timer.elapsed().as_secs().saturating_sub(cutoff_time),
+                                            ));
+                                            if timer
+                                                .elapsed()
+                                                .as_secs()
+                                                .ge(&cutoff_time.saturating_add(29))
+                                            {
+                                                break;
+                                            }
+                                        }
                                     }
                                 } else if i == 0 {
                                     progress_bar.set_message(format!(
