@@ -43,9 +43,11 @@ impl Miner {
         if let Some(cores) = args.cores {
             self.check_num_cores(cores);
             parallel_strategy = ParallelStrategy::Cores(cores);
+            println!("Parallel strategy: {cores} cores.");
         } else if let Some(threads) = args.threads {
             self.check_num_threads(threads);
             parallel_strategy = ParallelStrategy::Threads(threads);
+            println!("Parallel strategy: {threads} threads.");
         } else {
             println!(
                 "{} No parallel strategy provided. Default to 1 core",
