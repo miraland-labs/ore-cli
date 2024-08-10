@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use chrono::Local;
 use colored::*;
 use solana_client::{
     client_error::{ClientError, ClientErrorKind, Result as ClientResult},
@@ -90,30 +91,41 @@ impl Miner {
             if attempts % 10 == 0 {
                 // Reset the compute unit price
                 if self.dynamic_fee {
-                    let fee = if let Some(fee) = self.dynamic_fee().await {
-                        let mut prio_fee = fee;
-                        // MI: upbound 300K for diff > 21
-                        if let Some(difficulty) = difficulty {
-                            if difficulty > 21 {
-                                prio_fee =
-                                    300_000.min(prio_fee.saturating_mul(15).saturating_div(10));
-                            } else if difficulty < 18 {
-                                // prio_fee = 5000.max(prio_fee.saturating_mul(2).saturating_div(3));
-                                // keep priority fee recommendation
+                    let fee = match self.dynamic_fee().await {
+                        Ok(fee) => {
+                            let mut prio_fee = fee;
+                            // MI: upbound 300K for diff > 21
+                            if let Some(difficulty) = difficulty {
+                                if difficulty > 21 {
+                                    prio_fee =
+                                        300_000.min(prio_fee.saturating_mul(15).saturating_div(10));
+                                } else if difficulty < 18 {
+                                    // prio_fee = 5000.max(prio_fee.saturating_mul(2).saturating_div(3));
+                                    // keep priority fee recommendation
+                                }
                             }
+                            progress_bar.println(format!("  Priority fee: {} microlamports", prio_fee));
+                            prio_fee
                         }
-                        progress_bar.println(format!("  Priority fee: {} microlamports", prio_fee));
-                        prio_fee
-                    } else {
-                        let fee = self.priority_fee.unwrap_or(0);
-                        progress_bar.println(format!("  {} Dynamic fees not supported by this RPC. Falling back to static value: {} microlamports", "WARNING".bold().yellow(), fee));
-                        fee
+                        Err(err) => {
+                            let fee = self.priority_fee.unwrap_or(0);
+                            progress_bar.println(format!(
+                                "  {} {} Falling back to static value: {} microlamports",
+                                "WARNING".bold().yellow(),
+                                err,
+                                fee
+                            ));
+                            fee
+                        }
                     };
+
                     final_ixs.remove(1);
                     final_ixs.insert(1, ComputeBudgetInstruction::set_compute_unit_price(fee));
+                    tx = Transaction::new_with_payer(&final_ixs, Some(&fee_payer.pubkey()));
                 }
 
-                // Resign tx
+                // Resign the tx
+                // MI: use loop to retry, otherwise program stops with .await.unwrap() when failure
                 let (hash, _slot) = loop {
                     match client
                         .get_latest_blockhash_with_commitment(self.rpc_client.commitment())
@@ -162,6 +174,13 @@ impl Miner {
                                                 TransactionConfirmationStatus::Processed => {}
                                                 TransactionConfirmationStatus::Confirmed
                                                 | TransactionConfirmationStatus::Finalized => {
+                                                    let now = Local::now();
+                                                    let formatted_time =
+                                                        now.format("%Y-%m-%d %H:%M:%S").to_string();
+                                                    progress_bar.println(format!(
+                                                        "  Timestamp: {}",
+                                                        formatted_time
+                                                    ));
                                                     progress_bar.finish_with_message(format!(
                                                         "{} {}",
                                                         "OK".bold().green(),

@@ -12,8 +12,10 @@ impl Miner {
     pub async fn stake(&self, args: StakeArgs) {
         // Get signer
         let signer = self.signer();
-        let sender = match args.sender {
-            Some(sender) => Pubkey::from_str(&sender).expect("Failed to parse sender address"),
+        let sender = match args.token_account {
+            Some(address) => {
+                Pubkey::from_str(&address).expect("Failed to parse token account address")
+            }
             None => spl_associated_token_account::get_associated_token_address(
                 &signer.pubkey(),
                 &ore_api::consts::MINT_ADDRESS,

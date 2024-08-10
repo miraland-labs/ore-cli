@@ -21,6 +21,7 @@ impl Miner {
         let proof = get_proof_with_authority(&self.rpc_client, pubkey).await;
         let mut ixs = vec![];
         let beneficiary = match args.to {
+            None => self.initialize_ata(pubkey).await,
             Some(to) => {
                 // Create beneficiary token account, if needed
                 let wallet = Pubkey::from_str(&to).expect("Failed to parse wallet address");
@@ -36,7 +37,7 @@ impl Miner {
                 {
                     ixs.push(
                         spl_associated_token_account::instruction::create_associated_token_account(
-                            &signer.pubkey(),
+                            &pubkey,
                             &wallet,
                             &ore_api::consts::MINT_ADDRESS,
                             &spl_token::id(),
@@ -45,7 +46,6 @@ impl Miner {
                 }
                 benefiary_tokens
             }
-            None => self.initialize_ata().await,
         };
 
         // Parse amount to claim
@@ -77,14 +77,14 @@ impl Miner {
             .ok();
     }
 
-    async fn initialize_ata(&self) -> Pubkey {
+    async fn initialize_ata(&self, wallet: Pubkey) -> Pubkey {
         // Initialize client.
         let signer = self.signer();
         let client = self.rpc_client.clone();
 
         // Build instructions.
         let token_account_pubkey = spl_associated_token_account::get_associated_token_address(
-            &signer.pubkey(),
+            &wallet,
             &ore_api::consts::MINT_ADDRESS,
         );
 
