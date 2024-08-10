@@ -345,7 +345,7 @@ impl Miner {
                                         ));
                                     }
                                     if global_best_difficulty.ge(&min_difficulty) {
-                                        if best_difficulty >= 18 {
+                                        if global_best_difficulty >= 18 {
                                             // Mine until min and exptected(18) difficulty has been met
                                             break;
                                         } else {
