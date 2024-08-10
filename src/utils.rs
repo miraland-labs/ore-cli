@@ -25,10 +25,26 @@ pub async fn _get_treasury(client: &RpcClient) -> Treasury {
 }
 
 pub async fn get_config(client: &RpcClient) -> Config {
-    let data = client
-        .get_account_data(&CONFIG_ADDRESS)
-        .await
-        .expect("Failed to get config account");
+    // MI: vanilla
+    // let data = client
+    //     .get_account_data(&CONFIG_ADDRESS)
+    //     .await
+    //     .expect("Failed to get config account");
+
+    let data: Vec<u8>;
+    loop {
+        match client.get_account_data(&CONFIG_ADDRESS).await {
+            Ok(d) => {
+                data = d;
+                break;
+            }
+            Err(e) => {
+                println!("get config account error: {:?}", e);
+                println!("retry to get config account...");
+            }
+        }
+    }
+
     *Config::try_from_bytes(&data).expect("Failed to parse config account")
 }
 

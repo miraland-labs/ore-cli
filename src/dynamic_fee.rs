@@ -94,7 +94,7 @@ impl Miner {
             }
         };
 
-        // // Send request in one steop
+        // // Send request in one step
         // let response: Value = client
         //     .post(rpc_url)
         //     .json(&body)
