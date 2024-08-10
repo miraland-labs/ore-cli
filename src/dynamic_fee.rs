@@ -94,16 +94,34 @@ impl Miner {
             }
         };
 
-        // Send request
-        let response: Value = client
+        // // Send request in one steop
+        // let response: Value = client
+        //     .post(rpc_url)
+        //     .json(&body)
+        //     .send()
+        //     .await
+        //     .unwrap()
+        //     .json()
+        //     .await
+        //     .unwrap();
+
+        // MI, Send request in two steps
+        // split json from send
+        // 1) handle response
+        let Ok(resp) = client
             .post(rpc_url)
             .json(&body)
             .send()
-            .await
-            .unwrap()
-            .json()
-            .await
-            .unwrap();
+            .await else {
+                eprintln!("didn't get dynamic fee estimate, use default instead.");
+                return Ok(5000);
+            };
+        
+        // 2) handle json
+        let Ok(response) = resp.json::<Value>().await else {
+            eprintln!("didn't get json data from fee estimate response, use default instead.");
+            return Ok(5000);
+        };
 
         // Parse response
         let calculated_fee = match strategy {
