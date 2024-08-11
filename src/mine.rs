@@ -28,6 +28,10 @@ use crate::{
     Miner,
 };
 
+// const NONCE_CHECKPOINT_STEP: u64 = 100; // nonce interval
+// const EXPECTED_MIN_DIFFICULTY: u32 = 18;
+// const RISK_TIME: u64 = 29; // sec
+
 enum ParallelStrategy {
     Cores(u64),
     Threads(u64),
@@ -57,6 +61,10 @@ impl Miner {
                 "WARNING".bold().yellow(),
             );
         };
+
+        let nonce_checkpoint_step: u64 = args.nonce_checkpoint_step;
+        let expected_min_difficulty: u32 = args.expected_min_difficulty;
+        let risk_time: u64 = args.risk_time;
 
         // Start mining loop
         let mut last_hash_at = 0;
@@ -93,7 +101,10 @@ impl Miner {
                         proof,
                         cutoff_time,
                         cores,
-                        config.min_difficulty as u32,
+                        // config.min_difficulty as u32,
+                        expected_min_difficulty,
+                        risk_time,
+                        nonce_checkpoint_step,
                     )
                     .await
                 }
@@ -102,7 +113,10 @@ impl Miner {
                         proof,
                         cutoff_time,
                         threads,
-                        config.min_difficulty as u32,
+                        // config.min_difficulty as u32,
+                        expected_min_difficulty,
+                        risk_time,
+                        nonce_checkpoint_step,
                     )
                     .await
                 }
@@ -156,6 +170,8 @@ impl Miner {
         cutoff_time: u64,
         cores: u64,
         min_difficulty: u32,
+        risk_time: u64,
+        checkpoint_step: u64,
     ) -> Solution {
         // Dispatch job to each thread
         let progress_bar = Arc::new(spinner::new_progress_bar());
@@ -207,37 +223,27 @@ impl Miner {
                             }
 
                             // Exit if time has elapsed
-                            if nonce % 100 == 0 {
+                            if nonce % checkpoint_step == 0 {
                                 let global_best_difficulty =
                                     *global_best_difficulty.read().unwrap();
-                                if timer.elapsed().as_secs().ge(&cutoff_time) {
-                                    if i.id == 0 {
-                                        progress_bar.set_message(format!(
-                                            "Mining... (difficulty {})",
-                                            global_best_difficulty,
-                                        ));
-                                    }
+                                let current_timestamp = timer.elapsed().as_secs();
+                                if current_timestamp.ge(&cutoff_time) {
                                     if global_best_difficulty.ge(&min_difficulty) {
-                                        if global_best_difficulty >= 18 {
-                                            // Mine until min and expected(18) difficulty has been met
+                                        // if min difficulty has been met
+                                        break;
+                                    } else {
+                                        // hashes for extra time after deadline (i.e. extra 29 secs)
+                                        if current_timestamp
+                                            .ge(&cutoff_time.saturating_add(risk_time))
+                                        {
                                             break;
-                                        } else {
-                                            // hashes for extra 29 secs
+                                        }
+                                        if i.id == 0 {
                                             progress_bar.set_message(format!(
                                                 "Mining... ({} sec surpassed, difficulty {})",
-                                                timer
-                                                    .elapsed()
-                                                    .as_secs()
-                                                    .saturating_sub(cutoff_time),
+                                                current_timestamp.saturating_sub(cutoff_time),
                                                 global_best_difficulty,
                                             ));
-                                            if timer
-                                                .elapsed()
-                                                .as_secs()
-                                                .ge(&cutoff_time.saturating_add(29))
-                                            {
-                                                break;
-                                            }
                                         }
                                     }
                                 } else if i.id == 0 {
@@ -245,8 +251,7 @@ impl Miner {
                                         "Mining... (difficulty {}, countdown {})",
                                         global_best_difficulty,
                                         format_duration(
-                                            cutoff_time.saturating_sub(timer.elapsed().as_secs())
-                                                as u32
+                                            cutoff_time.saturating_sub(current_timestamp) as u32
                                         ),
                                     ));
                                 }
@@ -293,6 +298,8 @@ impl Miner {
         cutoff_time: u64,
         threads: u64,
         min_difficulty: u32,
+        risk_time: u64,
+        checkpoint_step: u64,
     ) -> Solution {
         // Dispatch job to each thread
         let progress_bar = Arc::new(spinner::new_progress_bar());
@@ -334,37 +341,27 @@ impl Miner {
                             }
 
                             // Exit if time has elapsed
-                            if nonce % 100 == 0 {
+                            if nonce % checkpoint_step == 0 {
                                 let global_best_difficulty =
                                     *global_best_difficulty.read().unwrap();
-                                if timer.elapsed().as_secs().ge(&cutoff_time) {
-                                    if i == 0 {
-                                        progress_bar.set_message(format!(
-                                            "Mining... (difficulty {})",
-                                            global_best_difficulty,
-                                        ));
-                                    }
+                                let current_timestamp = timer.elapsed().as_secs();
+                                if current_timestamp.ge(&cutoff_time) {
                                     if global_best_difficulty.ge(&min_difficulty) {
-                                        if global_best_difficulty >= 18 {
-                                            // Mine until min and exptected(18) difficulty has been met
+                                        // if min difficulty has been met
+                                        break;
+                                    } else {
+                                        // hashes for extra time after deadline (i.e. extra 29 secs)
+                                        if current_timestamp
+                                            .ge(&cutoff_time.saturating_add(risk_time))
+                                        {
                                             break;
-                                        } else {
-                                            // hashes for extra 29 secs
+                                        }
+                                        if i == 0 {
                                             progress_bar.set_message(format!(
                                                 "Mining... ({} sec surpassed, difficulty {})",
-                                                timer
-                                                    .elapsed()
-                                                    .as_secs()
-                                                    .saturating_sub(cutoff_time),
+                                                current_timestamp.saturating_sub(cutoff_time),
                                                 global_best_difficulty,
                                             ));
-                                            if timer
-                                                .elapsed()
-                                                .as_secs()
-                                                .ge(&cutoff_time.saturating_add(29))
-                                            {
-                                                break;
-                                            }
                                         }
                                     }
                                 } else if i == 0 {
@@ -372,8 +369,7 @@ impl Miner {
                                         "Mining... (difficulty {}, countdown {})",
                                         global_best_difficulty,
                                         format_duration(
-                                            cutoff_time.saturating_sub(timer.elapsed().as_secs())
-                                                as u32
+                                            cutoff_time.saturating_sub(current_timestamp) as u32
                                         ),
                                     ));
                                 }

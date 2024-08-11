@@ -73,11 +73,38 @@ pub struct MineArgs {
     #[arg(
         long,
         short,
-        value_name = "SECONDS",
+        value_name = "BUFFER_SECONDS",
         help = "The number seconds before the deadline to stop mining and start submitting.",
         default_value = "5"
     )]
     pub buffer_time: u64,
+
+    #[arg(
+        long,
+        short,
+        value_name = "NONCE_CHECKPOINT_STEP",
+        help = "The nonce checkpoint step size.",
+        default_value = "100"
+    )]
+    pub nonce_checkpoint_step: u64,
+
+    #[arg(
+        long,
+        short,
+        value_name = "EXPECTED_MIN_DIFFICULTY",
+        help = "The expected min difficulty to submit for miner.",
+        default_value = "18"
+    )]
+    pub expected_min_difficulty: u32,
+
+    #[arg(
+        long,
+        short,
+        value_name = "RISK_SECONDS",
+        help = "If expected min difficulty cannot be met before the deadline, take extra hash time in seconds to stop mining and start submitting.",
+        default_value = "0"
+    )]
+    pub risk_time: u64,
 }
 
 #[derive(Parser, Debug)]
