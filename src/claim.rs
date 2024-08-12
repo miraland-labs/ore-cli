@@ -99,7 +99,7 @@ impl Miner {
             &ore_api::consts::MINT_ADDRESS,
             &spl_token::id(),
         );
-        self.send_and_confirm(&[ix], ComputeBudget::Dynamic, false, None)
+        self.send_and_confirm(&[ix], ComputeBudget::Fixed(400_000), false, None)
             .await
             .ok();
 

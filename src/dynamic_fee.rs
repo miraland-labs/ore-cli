@@ -3,12 +3,20 @@ use crate::Miner;
 use ore_api::consts::BUS_ADDRESSES;
 use reqwest::Client;
 use serde_json::{json, Value};
+
+use solana_sdk::pubkey::Pubkey;
+use std::{collections::HashMap, str::FromStr};
+
 use solana_client::rpc_response::RpcPrioritizationFee;
+
 use url::Url;
+
+pub const DEFAULT_PRIORITY_FEE: u64 = 10_000;
 
 enum FeeStrategy {
     Helius,
     Triton,
+    LOCAL,
     Alchemy,
     Quiknode,
 }
@@ -36,7 +44,7 @@ impl Miner {
         } else if host.contains("rpcpool.com") {
             FeeStrategy::Triton
         } else {
-            return Err("Dynamic fees not supported by this RPC.".to_string());
+            FeeStrategy::LOCAL
         };
 
         // Build fee estimate request
@@ -45,53 +53,46 @@ impl Miner {
             .chain(BUS_ADDRESSES.iter().map(|pubkey| pubkey.to_string()))
             .collect();
         let body = match strategy {
-            FeeStrategy::Helius => {
-                json!({
-                    "jsonrpc": "2.0",
-                    "id": "priority-fee-estimate",
-                    "method": "getPriorityFeeEstimate",
-                    "params": [{
-                        "accountKeys": ore_addresses,
-                        "options": {
-                            "recommended": true
-                        }
-                    }]
-                })
-            }
-            FeeStrategy::Alchemy => {
-                json!({
-                    "jsonrpc": "2.0",
-                    "id": "priority-fee-estimate",
-                    "method": "getRecentPrioritizationFees",
-                    "params": [
-                        ore_addresses
-                    ]
-                })
-            }
-            FeeStrategy::Quiknode => {
-                json!({
-                    "jsonrpc": "2.0",
-                    "id": "1",
-                    "method": "qn_estimatePriorityFees",
-                    "params": {
-                        "account": BUS_ADDRESSES[0].to_string(),
-                        "last_n_blocks": 100
+            FeeStrategy::Helius => Some(json!({
+                "jsonrpc": "2.0",
+                "id": "priority-fee-estimate",
+                "method": "getPriorityFeeEstimate",
+                "params": [{
+                    "accountKeys": ore_addresses,
+                    "options": {
+                        "recommended": true
                     }
-                })
-            }
-            FeeStrategy::Triton => {
-                json!({
-                    "jsonrpc": "2.0",
-                    "id": "priority-fee-estimate",
-                    "method": "getRecentPrioritizationFees",
-                    "params": [
-                        ore_addresses,
-                        {
-                            "percentile": 5000,
-                        }
-                    ]
-                })
-            }
+                }]
+            })),
+            FeeStrategy::Alchemy => Some(json!({
+                "jsonrpc": "2.0",
+                "id": "priority-fee-estimate",
+                "method": "getRecentPrioritizationFees",
+                "params": [
+                    ore_addresses
+                ]
+            })),
+            FeeStrategy::Quiknode => Some(json!({
+                "jsonrpc": "2.0",
+                "id": "1",
+                "method": "qn_estimatePriorityFees",
+                "params": {
+                    "account": "oreV2ZymfyeXgNgBdqMkumTqqAprVqgBWQfoYkrtKWQ",
+                    "last_n_blocks": 100
+                }
+            })),
+            FeeStrategy::Triton => Some(json!({
+                "jsonrpc": "2.0",
+                "id": "priority-fee-estimate",
+                "method": "getRecentPrioritizationFees",
+                "params": [
+                    ore_addresses,
+                    {
+                        "percentile": 5000,
+                    }
+                ]
+            })),
+            FeeStrategy::LOCAL => None,
         };
 
         // // Send request in one step
@@ -105,22 +106,25 @@ impl Miner {
         //     .await
         //     .unwrap();
 
-        // MI, Send request in two steps
-        // split json from send
-        // 1) handle response
-        let Ok(resp) = client
-            .post(rpc_url)
-            .json(&body)
-            .send()
-            .await else {
+        // Send rpc request
+        let response = if let Some(body) = body {
+            // MI, Send request in two steps
+            // split json from send
+            // 1) handle response
+            let Ok(resp) = client.post(rpc_url).json(&body).send().await else {
                 eprintln!("didn't get dynamic fee estimate, use default instead.");
-                return Ok(5000);
+                return Ok(DEFAULT_PRIORITY_FEE);
             };
-        
-        // 2) handle json
-        let Ok(response) = resp.json::<Value>().await else {
-            eprintln!("didn't get json data from fee estimate response, use default instead.");
-            return Ok(5000);
+
+            // 2) handle json
+            let Ok(response) = resp.json::<Value>().await else {
+                eprintln!("didn't get json data from fee estimate response, use default instead.");
+                return Ok(DEFAULT_PRIORITY_FEE);
+            };
+
+            response
+        } else {
+            Value::Null
         };
 
         // Parse response
@@ -158,7 +162,12 @@ impl Miner {
                             "Failed to parse priority fee response: {response:?}, error: {error}"
                         ))
                     })
-            }
+            },
+            FeeStrategy::LOCAL => {
+                self.local_dynamic_fee().await.or_else(|err| {
+                    Err(format!("Failed to parse priority fee response: {err}"))
+                })
+            },
         };
 
         // Check if the calculated fee is higher than max
@@ -172,6 +181,55 @@ impl Miner {
                 }
             }
         }
+    }
+
+    pub async fn local_dynamic_fee(&self) -> Result<u64, Box<dyn std::error::Error>> {
+        let client = self.rpc_client.clone();
+        let pubkey = [
+            "oreV2ZymfyeXgNgBdqMkumTqqAprVqgBWQfoYkrtKWQ",
+            "5HngGmYzvSuh3XyU11brHDpMTHXQQRQQT4udGFtQSjgR",
+            "2oLNTQKRb4a2117kFi6BYTUDu3RPrMVAHFhCfPKMosxX",
+        ];
+        let address_strings = pubkey;
+
+        // Convert strings to Pubkey
+        let addresses: Vec<Pubkey> = address_strings
+            .into_iter()
+            .map(|addr_str| Pubkey::from_str(addr_str).expect("Invalid address"))
+            .collect();
+
+        // Get recent prioritization fees
+        let recent_prioritization_fees = client.get_recent_prioritization_fees(&addresses).await?;
+        if recent_prioritization_fees.is_empty() {
+            return Err("No recent prioritization fees".into());
+        }
+        let mut sorted_fees: Vec<_> = recent_prioritization_fees.into_iter().collect();
+        sorted_fees.sort_by(|a, b| b.slot.cmp(&a.slot));
+        let chunk_size = 150;
+        let chunks: Vec<_> = sorted_fees.chunks(chunk_size).take(3).collect();
+        let mut percentiles: HashMap<u8, u64> = HashMap::new();
+        for (_, chunk) in chunks.iter().enumerate() {
+            let fees: Vec<u64> = chunk.iter().map(|fee| fee.prioritization_fee).collect();
+            percentiles = Self::calculate_percentiles(&fees);
+        }
+
+        // Default to 75 percentile
+        let fee = *percentiles.get(&75).unwrap_or(&0);
+        Ok(fee)
+    }
+
+    fn calculate_percentiles(fees: &[u64]) -> HashMap<u8, u64> {
+        let mut sorted_fees = fees.to_vec();
+        sorted_fees.sort_unstable();
+        let len = sorted_fees.len();
+        let percentiles = vec![10, 25, 50, 60, 70, 75, 80, 85, 90, 100];
+        percentiles
+            .into_iter()
+            .map(|p| {
+                let index = (p as f64 / 100.0 * len as f64).round() as usize;
+                (p, sorted_fees[index.saturating_sub(1)])
+            })
+            .collect()
     }
 }
 

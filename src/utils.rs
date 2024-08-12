@@ -11,10 +11,16 @@ use ore_api::{
     state::{Config, Proof, Treasury},
 };
 use ore_utils::AccountDeserialize;
+// use serde::Deserialize;
+use solana_client::client_error::{ClientError, ClientErrorKind};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_program::{pubkey::Pubkey, sysvar};
-use solana_sdk::clock::Clock;
+use solana_sdk::{clock::Clock, hash::Hash};
 use spl_associated_token_account::get_associated_token_address;
+use tokio::time::sleep;
+
+pub const BLOCKHASH_QUERY_RETRIES: usize = 5;
+pub const BLOCKHASH_QUERY_DELAY: u64 = 500;
 
 pub async fn _get_treasury(client: &RpcClient) -> Treasury {
     let data = client
@@ -128,6 +134,33 @@ pub fn ask_confirm(question: &str) -> bool {
     }
 }
 
+pub async fn get_latest_blockhash_with_retries(
+    client: &RpcClient,
+) -> Result<(Hash, u64), ClientError> {
+    let mut attempts = 0;
+
+    loop {
+        if let Ok((hash, slot)) = client
+            .get_latest_blockhash_with_commitment(client.commitment())
+            .await
+        {
+            return Ok((hash, slot));
+        }
+
+        // Retry
+        sleep(Duration::from_millis(BLOCKHASH_QUERY_DELAY)).await;
+        attempts += 1;
+        if attempts >= BLOCKHASH_QUERY_RETRIES {
+            return Err(ClientError {
+                request: None,
+                kind: ClientErrorKind::Custom(
+                    "Max retries reached for latest blockhash query".into(),
+                ),
+            });
+        }
+    }
+}
+
 // MI
 pub fn play_sound() {
     match rodio::OutputStream::try_default() {
@@ -151,3 +184,14 @@ pub fn proof_pubkey(authority: Pubkey) -> Pubkey {
 pub fn treasury_tokens_pubkey() -> Pubkey {
     get_associated_token_address(&TREASURY_ADDRESS, &MINT_ADDRESS)
 }
+
+// #[derive(Debug, Deserialize)]
+// pub struct Tip {
+//     pub time: String,
+//     pub landed_tips_25th_percentile: f64,
+//     pub landed_tips_50th_percentile: f64,
+//     pub landed_tips_75th_percentile: f64,
+//     pub landed_tips_95th_percentile: f64,
+//     pub landed_tips_99th_percentile: f64,
+//     pub ema_landed_tips_50th_percentile: f64,
+// }

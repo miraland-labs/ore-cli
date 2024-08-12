@@ -105,6 +105,24 @@ pub struct MineArgs {
         default_value = "0"
     )]
     pub risk_time: u64,
+
+    #[arg(
+        long,
+        short,
+        value_name = "EXTRA_FEE_DIFFICULTY",
+        help = "The min difficulty that the miner thinks deserves to pay more priority fee.",
+        default_value = "27"
+    )]
+    pub extra_fee_difficulty: u32,
+
+    #[arg(
+        long,
+        short,
+        value_name = "EXTRA_FEE_PERCENT",
+        help = "The extra percentage that the miner thinks deserves to pay more priority fee. Integer range 0..100 inclusive and the final priority fee cannot exceed the priority fee cap.",
+        default_value = "0"
+    )]
+    pub extra_fee_percent: u64,
 }
 
 #[derive(Parser, Debug)]

@@ -37,6 +37,13 @@ enum ParallelStrategy {
     Threads(u64),
 }
 
+pub struct DifficultyPayload {
+    pub solution_difficulty: u32,
+    pub expected_min_difficulty: u32,
+    pub extra_fee_difficulty: u32,
+    pub extra_fee_percent: u64,
+}
+
 impl Miner {
     pub async fn mine(&self, args: MineArgs) {
         // Open account, if needed.
@@ -64,6 +71,8 @@ impl Miner {
 
         let nonce_checkpoint_step: u64 = args.nonce_checkpoint_step;
         let expected_min_difficulty: u32 = args.expected_min_difficulty;
+        let extra_fee_difficulty: u32 = args.extra_fee_difficulty;
+        let extra_fee_percent: u64 = args.extra_fee_percent;
         let risk_time: u64 = args.risk_time;
 
         // Start mining loop
@@ -122,6 +131,13 @@ impl Miner {
                 }
             };
 
+            let difficulty_payload = DifficultyPayload {
+                solution_difficulty: solution.to_hash().difficulty(),
+                expected_min_difficulty,
+                extra_fee_difficulty,
+                extra_fee_percent,
+            };
+
             // Build instruction set
             let mut ixs = vec![ore_api::instruction::auth(proof_pubkey(signer.pubkey()))];
             let mut compute_budget = 500_000;
@@ -149,7 +165,8 @@ impl Miner {
                     &ixs,
                     ComputeBudget::Fixed(compute_budget),
                     false,
-                    Some(solution.to_hash().difficulty()),
+                    // Some(solution.to_hash().difficulty()),
+                    Some(difficulty_payload),
                 )
                 .await
                 .is_ok()
