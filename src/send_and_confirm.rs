@@ -60,15 +60,15 @@ impl Miner {
 
         // Set compute budget
         let mut final_ixs = vec![];
-        match compute_budget {
-            ComputeBudget::Dynamic => {
-                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(1_400_000))
-                todo!("simulate tx")
-            }
-            ComputeBudget::Fixed(cus) => {
-                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus))
-            }
-        }
+        // match compute_budget {
+        //     ComputeBudget::Dynamic => {
+        //         // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(1_400_000))
+        //         todo!("simulate tx")
+        //     }
+        //     ComputeBudget::Fixed(cus) => {
+        //         final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus))
+        //     }
+        // }
 
         // Set compute unit price
         final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
@@ -287,10 +287,13 @@ impl Miner {
                                                     return Ok(sig);
                                                 }
                                             }
+                                        } else {
+                                            // MI
+                                            println!("No confirmation status available yet for current signature status.");
                                         }
                                     } else {
                                         // MI
-                                        println!("No status");
+                                        println!("No status available yet for current signature.");
                                     }
                                 }
                             }
