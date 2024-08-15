@@ -119,7 +119,7 @@ pub struct MineArgs {
         long,
         short,
         value_name = "EXTRA_FEE_PERCENT",
-        help = "The extra percentage that the miner thinks deserves to pay more priority fee. Integer range 0..100 inclusive and the final priority fee cannot exceed the priority fee cap.",
+        help = "The extra percentage that the miner feels deserves to pay more of the priority fee. A positive integer in the range 0..100 [inclusive] is preferred (although integer > 100 is possible, but not recommended), and the final priority fee cannot exceed the priority fee cap.",
         default_value = "0"
     )]
     pub extra_fee_percent: u64,

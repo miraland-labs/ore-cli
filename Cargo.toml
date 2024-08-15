@@ -25,6 +25,7 @@ bytemuck = "1.16"
 cached = "0.46.1"
 chrono = "0.4.38"
 clap = { version = "4.4.12", features = ["derive"] }
+color-eyre = { version = "0.6" }
 colored = "2.0"
 core_affinity = "0.8.1" 
 drillx = "2.0.0"

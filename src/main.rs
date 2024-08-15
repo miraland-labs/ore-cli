@@ -22,7 +22,13 @@ mod utils;
 use std::sync::Arc;
 
 use args::*;
-use clap::{command, Parser, Subcommand};
+use clap::{
+	builder::{
+		styling::{AnsiColor, Effects},
+		Styles,
+	},
+	command, Parser, Subcommand,
+};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
@@ -32,6 +38,7 @@ use solana_sdk::{
 struct Miner {
     pub keypair_filepath: Option<String>,
     pub priority_fee: Option<u64>,
+    pub priority_fee_cap: Option<u64>,
     pub dynamic_fee_url: Option<String>,
     pub dynamic_fee: bool,
     pub rpc_client: Arc<RpcClient>,
@@ -83,7 +90,7 @@ enum Commands {
 }
 
 #[derive(Parser, Debug)]
-#[command(about, version)]
+#[command(about, version, styles = styles())]
 struct Args {
     #[arg(
         long,
@@ -120,12 +127,21 @@ struct Args {
 
     #[arg(
         long,
-        value_name = "MICROLAMPORTS",
-        help = "Price to pay for compute units. If dynamic fees are enabled, this value will be used as the cap.",
-        default_value = "500000",
+        value_name = "FEE_MICROLAMPORTS",
+        help = "Price to pay for compute units when dynamic fee flag is off, or dynamic fee is unavailable.",
+        default_value = "20000",
         global = true
     )]
     priority_fee: Option<u64>,
+
+    #[arg(
+        long,
+        value_name = "FEE_CAP_MICROLAMPORTS",
+        help = "Max price to pay for compute units when dynamic fees are enabled.",
+        default_value = "500000",
+        global = true
+    )]
+    priority_fee_cap: Option<u64>,
 
     #[arg(
         long,
@@ -154,6 +170,7 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
+    color_eyre::install().unwrap();
     let args = Args::parse();
 
     // Load the config file from custom path, the default path, or use default config values
@@ -177,6 +194,7 @@ async fn main() {
     let miner = Arc::new(Miner::new(
         Arc::new(rpc_client),
         args.priority_fee,
+        args.priority_fee_cap,
         Some(default_keypair),
         args.dynamic_fee_url,
         args.dynamic_fee,
@@ -233,6 +251,7 @@ impl Miner {
     pub fn new(
         rpc_client: Arc<RpcClient>,
         priority_fee: Option<u64>,
+        priority_fee_cap: Option<u64>,
         keypair_filepath: Option<String>,
         dynamic_fee_url: Option<String>,
         dynamic_fee: bool,
@@ -243,6 +262,7 @@ impl Miner {
             rpc_client,
             keypair_filepath,
             priority_fee,
+            priority_fee_cap,
             dynamic_fee_url,
             dynamic_fee,
             fee_payer_filepath,
@@ -265,4 +285,12 @@ impl Miner {
             None => panic!("No fee payer keypair provided"),
         }
     }
+}
+
+fn styles() -> Styles {
+	Styles::styled()
+		.header(AnsiColor::Red.on_default() | Effects::BOLD)
+		.usage(AnsiColor::Red.on_default() | Effects::BOLD)
+		.literal(AnsiColor::Blue.on_default() | Effects::BOLD)
+		.placeholder(AnsiColor::Green.on_default())
 }

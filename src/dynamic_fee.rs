@@ -174,10 +174,14 @@ impl Miner {
         match calculated_fee {
             Err(err) => Err(err),
             Ok(fee) => {
-                if let Some(max_fee) = self.priority_fee {
-                    Ok(fee.min(max_fee))
+                if let Some(max_fee) = self.priority_fee_cap {
+                    // MI vanilla
+                    // Ok(fee.min(max_fee))
+                    Ok((fee + 5000).min(max_fee)) // add extra 5000 microlamports as buffer
                 } else {
-                    Ok(fee)
+                    // MI vanilla
+                    // Ok(fee)
+                    Ok(fee + 5000)
                 }
             }
         }

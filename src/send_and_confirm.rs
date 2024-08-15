@@ -139,8 +139,8 @@ impl Miner {
                             }) = difficulty_payload
                             {
                                 if solution_difficulty > extra_fee_difficulty {
-                                    prio_fee = if let Some(priority_fee) = self.priority_fee {
-                                        priority_fee.min(
+                                    prio_fee = if let Some(priority_fee_cap) = self.priority_fee_cap {
+                                        priority_fee_cap.min(
                                             prio_fee
                                                 .saturating_mul(
                                                     100u64.saturating_add(extra_fee_percent),
