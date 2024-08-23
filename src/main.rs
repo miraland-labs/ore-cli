@@ -23,11 +23,11 @@ use std::sync::Arc;
 
 use args::*;
 use clap::{
-	builder::{
-		styling::{AnsiColor, Effects},
-		Styles,
-	},
-	command, Parser, Subcommand,
+    builder::{
+        styling::{AnsiColor, Effects},
+        Styles,
+    },
+    command, Parser, Subcommand,
 };
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
@@ -129,7 +129,7 @@ struct Args {
         long,
         value_name = "FEE_MICROLAMPORTS",
         help = "Price to pay for compute units when dynamic fee flag is off, or dynamic fee is unavailable.",
-        default_value = "20000",
+        default_value = "10000",
         global = true
     )]
     priority_fee: Option<u64>,
@@ -138,7 +138,7 @@ struct Args {
         long,
         value_name = "FEE_CAP_MICROLAMPORTS",
         help = "Max price to pay for compute units when dynamic fees are enabled.",
-        default_value = "500000",
+        default_value = "100000",
         global = true
     )]
     priority_fee_cap: Option<u64>,
@@ -153,7 +153,7 @@ struct Args {
 
     #[arg(long, help = "Enable dynamic priority fees", global = true)]
     dynamic_fee: bool,
-    
+
     /// Mine with sound notification on/off
     #[arg(
         long,
@@ -162,7 +162,7 @@ struct Args {
         default_value = "false",
         global = true
     )]
-	no_sound_notification: bool,
+    no_sound_notification: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -288,9 +288,9 @@ impl Miner {
 }
 
 fn styles() -> Styles {
-	Styles::styled()
-		.header(AnsiColor::Red.on_default() | Effects::BOLD)
-		.usage(AnsiColor::Red.on_default() | Effects::BOLD)
-		.literal(AnsiColor::Blue.on_default() | Effects::BOLD)
-		.placeholder(AnsiColor::Green.on_default())
+    Styles::styled()
+        .header(AnsiColor::Red.on_default() | Effects::BOLD)
+        .usage(AnsiColor::Red.on_default() | Effects::BOLD)
+        .literal(AnsiColor::Blue.on_default() | Effects::BOLD)
+        .placeholder(AnsiColor::Green.on_default())
 }

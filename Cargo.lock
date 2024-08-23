@@ -1555,9 +1555,9 @@ dependencies = [
 
 [[package]]
 name = "drillx"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c5fd3a8f11a6420d6efb1952c8c2e788627cb2c9e834537dc4b6bd036461646"
+checksum = "9f1b6097a8aeb360dc83cad60047b42cfabf54a56b81a75e254f5854211a7475"
 dependencies = [
  "equix",
  "serde",
@@ -2697,7 +2697,7 @@ dependencies = [
 
 [[package]]
 name = "more-cli"
-version = "2.1.0"
+version = "2.2.0"
 dependencies = [
  "bincode",
  "bs58 0.5.1",
