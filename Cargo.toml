@@ -1,6 +1,6 @@
 [package]
 name = "more-cli"
-version = "2.2.0"
+version = "2.2.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "A command line interface for ORE cryptocurrency mining. Tailored by Miraland Labs."
@@ -27,14 +27,14 @@ chrono = "0.4.38"
 clap = { version = "4.4.12", features = ["derive"] }
 color-eyre = { version = "0.6" }
 colored = "2.0"
-core_affinity = "0.8.1" 
+core_affinity = "0.8.1"
 drillx = "2.1.0"
 # drillx = { git = "https://github.com/regolith-labs/drillx", branch = "master", features = ["solana"] }
 futures = "0.3.30"
 indicatif = "0.17.8"
 num_cpus = "1.16.0"
-ore-api = "2.1.0"
-ore-utils = "2.1.0"
+ore-api = "2.1.1"
+ore-utils = "2.1.1"
 # ore = { package = "ore-program", git = "https://github.com/regolith-labs/ore", rev = "891565dff603891e540603d8399c233071f036af" }
 # ore = { package = "ore-program", git = "https://github.com/regolith-labs/ore", branch = "hardhat/v2" }
 # ore-api = { git = "https://github.com/regolith-labs/ore", rev = "ce9a701" }
@@ -64,11 +64,11 @@ url = "2.5"
 # ore-utils = { path = "../ore/utils" }
 
 [profile.release]
-opt-level = 3   # Optimize for binary size. You can use "3" for full optimizations if binary size isn't an issue.
-codegen-units = 1 # Better optimization with fewer codegen units
-lto = true        # Enable Link Time Optimization (LTO)
-debug = false     # Disable debug info to reduce binary size
-panic = 'abort'   # Reduces the binary size further by not including unwinding information
+opt-level = 3           # Optimize for binary size. You can use "3" for full optimizations if binary size isn't an issue.
+codegen-units = 1       # Better optimization with fewer codegen units
+lto = true              # Enable Link Time Optimization (LTO)
+debug = false           # Disable debug info to reduce binary size
+panic = 'abort'         # Reduces the binary size further by not including unwinding information
 rpath = false
 incremental = false
 overflow-checks = false
