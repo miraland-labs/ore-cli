@@ -42,6 +42,7 @@ ore-utils = "2.1.1"
 rand = "0.8.4"
 reqwest = { version = "0.12", features = ["json"] }
 rodio = "0.18.1"
+slack-messaging = "0.3.1"
 solana-cli-config = "^1.18"
 solana-client = "^1.18"
 solana-program = "^1.18"

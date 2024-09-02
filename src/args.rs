@@ -123,6 +123,15 @@ pub struct MineArgs {
         default_value = "0"
     )]
     pub extra_fee_percent: u64,
+
+    #[arg(
+        long,
+        short,
+        value_name = "SLACK_DIFFICULTY",
+        help = "The min difficulty that will notify slack channel upon transaction success.",
+        default_value = "25"
+    )]
+    pub slack_difficulty: u32,
 }
 
 #[derive(Parser, Debug)]

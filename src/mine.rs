@@ -1,5 +1,7 @@
 use crate::utils;
 use std::{
+    fmt, io,
+    str::FromStr,
     sync::{Arc, RwLock},
     time::Instant,
 };
@@ -15,9 +17,11 @@ use ore_api::{
 };
 use ore_utils::AccountDeserialize;
 use rand::Rng;
+use slack_messaging::Message as SlackChannelMessage;
 use solana_program::pubkey::Pubkey;
 use solana_rpc_client::spinner;
 use solana_sdk::signer::Signer;
+use tokio::sync::mpsc::{self, UnboundedReceiver};
 
 use crate::{
     args::MineArgs,
@@ -42,6 +46,43 @@ pub struct DifficultyPayload {
     pub expected_min_difficulty: u32,
     pub extra_fee_difficulty: u32,
     pub extra_fee_percent: u64,
+    pub slack_difficulty: u32,
+}
+
+#[derive(Debug)]
+pub enum SlackMessage {
+    // Rewards(/* difficulty: */ u32, /* rewards: */ f64, /* balance: */ f64),
+    Rewards(u32, f64, f64),
+}
+
+#[derive(Debug)]
+enum SrcType {
+    Pool,
+    Solo,
+}
+
+impl fmt::Display for SrcType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SrcType::Pool => write!(f, "pool"),
+            SrcType::Solo => write!(f, "solo"),
+        }
+    }
+}
+
+impl FromStr for SrcType {
+    type Err = io::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pool" => Ok(SrcType::Pool),
+            "solo" => Ok(SrcType::Solo),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Unknown source type",
+            )),
+        }
+    }
 }
 
 impl Miner {
@@ -73,24 +114,53 @@ impl Miner {
         let expected_min_difficulty: u32 = args.expected_min_difficulty;
         let extra_fee_difficulty: u32 = args.extra_fee_difficulty;
         let extra_fee_percent: u64 = args.extra_fee_percent;
+        let slack_difficulty: u32 = args.slack_difficulty;
         let risk_time: u64 = args.risk_time;
+
+        // MI
+        let (slack_message_sender, slack_message_receiver) =
+            mpsc::unbounded_channel::<SlackMessage>();
+        if let Some(slack_webhook) = self.slack_webhook.clone() {
+            // Handle slack messages to send
+            tokio::spawn(async move {
+                slack_messaging_system(slack_webhook, slack_message_receiver).await;
+            });
+        }
 
         // Start mining loop
         let mut last_hash_at = 0;
         let mut last_balance = 0;
+        let mut last_difficulty = 0;
         loop {
             // Fetch proof
             let config = get_config(&self.rpc_client).await;
             let proof =
                 get_updated_proof_with_authority(&self.rpc_client, signer.pubkey(), last_hash_at)
                     .await;
+
+            let curr_balance_string = amount_u64_to_string(proof.balance);
+            let delta_change_string =
+                amount_u64_to_string(proof.balance.saturating_sub(last_balance));
+            // notify slack channel if necessary
+            if last_difficulty >= slack_difficulty {
+                if self.slack_webhook.is_some() {
+                    let _ = slack_message_sender.send(SlackMessage::Rewards(
+                        last_difficulty,
+                        f64::from_str(&delta_change_string).unwrap(),
+                        f64::from_str(&curr_balance_string).unwrap(),
+                    ));
+                }
+            }
+
             println!(
                 "\n\nStake: {} ORE\n{}  Multiplier: {:12}x",
-                amount_u64_to_string(proof.balance),
+                // amount_u64_to_string(proof.balance),
+                curr_balance_string,
                 if last_hash_at.gt(&0) {
                     format!(
                         "  Change: {} ORE\n",
-                        amount_u64_to_string(proof.balance.saturating_sub(last_balance))
+                        // amount_u64_to_string(proof.balance.saturating_sub(last_balance))
+                        delta_change_string
                     )
                 } else {
                     "".to_string()
@@ -131,11 +201,13 @@ impl Miner {
                 }
             };
 
+            let solution_difficulty = solution.to_hash().difficulty();
             let difficulty_payload = DifficultyPayload {
-                solution_difficulty: solution.to_hash().difficulty(),
+                solution_difficulty,
                 expected_min_difficulty,
                 extra_fee_difficulty,
                 extra_fee_percent,
+                slack_difficulty,
             };
 
             // Build instruction set
@@ -174,6 +246,8 @@ impl Miner {
                 if !self.no_sound_notification {
                     utils::play_sound();
                 }
+
+                last_difficulty = solution_difficulty;
             } else {
                 // MI: when some error like 0x0 (need reset) occurs, we need to exit loop to avoid hang-up
                 return;
@@ -504,4 +578,44 @@ fn format_duration(seconds: u32) -> String {
     let minutes = seconds / 60;
     let remaining_seconds = seconds % 60;
     format!("{:02}:{:02}", minutes, remaining_seconds)
+}
+
+// MI
+async fn slack_messaging_system(
+    slack_webhook: String,
+    mut receiver_channel: UnboundedReceiver<SlackMessage>,
+) {
+    loop {
+        while let Some(slack_message) = receiver_channel.recv().await {
+            match slack_message {
+                SlackMessage::Rewards(d, r, b) => {
+                    slack_messaging(slack_webhook.clone(), SrcType::Solo, d, r, b).await
+                }
+            }
+        }
+    }
+}
+
+// MI
+async fn slack_messaging(
+    slack_webhook: String,
+    source: SrcType,
+    difficulty: u32,
+    rewards: f64,
+    balance: f64,
+) {
+    let text = format!(
+        "S: {}\nD: {}\nR: {}\nB: {}",
+        source, difficulty, rewards, balance
+    );
+    let slack_webhook_url =
+        url::Url::parse(&slack_webhook).expect("Failed to parse slack webhook url");
+    let message = SlackChannelMessage::builder().text(text).build();
+    let req = reqwest::Client::new()
+        .post(slack_webhook_url)
+        .json(&message);
+    if let Err(err) = req.send().await {
+        eprintln!("{}", err);
+        // error!("{}", err);
+    }
 }

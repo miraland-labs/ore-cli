@@ -43,6 +43,7 @@ struct Miner {
     pub dynamic_fee: bool,
     pub rpc_client: Arc<RpcClient>,
     pub fee_payer_filepath: Option<String>,
+    pub slack_webhook: Option<String>,
     pub no_sound_notification: bool,
 }
 
@@ -154,6 +155,14 @@ struct Args {
     #[arg(long, help = "Enable dynamic priority fees", global = true)]
     dynamic_fee: bool,
 
+    #[arg(
+        long,
+        value_name = "SLACK_WEBHOOK",
+        help = "slack webhook url to send notification message.",
+        global = true
+    )]
+    slack_webhook: Option<String>,
+
     /// Mine with sound notification on/off
     #[arg(
         long,
@@ -199,6 +208,7 @@ async fn main() {
         args.dynamic_fee_url,
         args.dynamic_fee,
         Some(fee_payer_filepath),
+        args.slack_webhook,
         args.no_sound_notification,
     ));
 
@@ -256,6 +266,7 @@ impl Miner {
         dynamic_fee_url: Option<String>,
         dynamic_fee: bool,
         fee_payer_filepath: Option<String>,
+        slack_webhook: Option<String>,
         no_sound_notification: bool,
     ) -> Self {
         Self {
@@ -266,6 +277,7 @@ impl Miner {
             dynamic_fee_url,
             dynamic_fee,
             fee_payer_filepath,
+            slack_webhook,
             no_sound_notification,
         }
     }
