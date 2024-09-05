@@ -74,10 +74,28 @@ pub async fn get_updated_proof_with_authority(
 }
 
 pub async fn get_proof(client: &RpcClient, address: Pubkey) -> Proof {
-    let data = client
-        .get_account_data(&address)
-        .await
-        .expect("Failed to get proof account");
+    // MI, vanilla
+    // let data = client
+    //     .get_account_data(&address)
+    //     .await
+    //     .expect("Failed to get proof account");
+
+    // MI
+    let data: Vec<u8>;
+    loop {
+        match client.get_account_data(&address).await {
+            Ok(d) => {
+                data = d;
+                break;
+            }
+            Err(e) => {
+                println!("get proof account error: {:?}", e);
+                println!("retry to get proof account...");
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+
     *Proof::try_from_bytes(&data).expect("Failed to parse proof account")
 }
 
@@ -100,6 +118,7 @@ pub async fn get_clock(client: &RpcClient) -> Clock {
                 println!("retry to get clock account...");
             }
         }
+        tokio::time::sleep(Duration::from_millis(500)).await;
     }
 
     bincode::deserialize::<Clock>(&data).expect("Failed to deserialize clock")
