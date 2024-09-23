@@ -3,7 +3,7 @@ use std::{
     fmt, io,
     str::FromStr,
     sync::{Arc, RwLock},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use colored::*;
@@ -17,6 +17,7 @@ use ore_api::{
 };
 use ore_utils::AccountDeserialize;
 use rand::Rng;
+use serenity::{http::Http, model::webhook::Webhook};
 use slack_messaging::Message as SlackChannelMessage;
 use solana_program::pubkey::Pubkey;
 use solana_rpc_client::spinner;
@@ -46,11 +47,11 @@ pub struct DifficultyPayload {
     pub expected_min_difficulty: u32,
     pub extra_fee_difficulty: u32,
     pub extra_fee_percent: u64,
-    pub slack_difficulty: u32,
+    pub messaging_diff: u32,
 }
 
 #[derive(Debug)]
-pub enum SlackMessage {
+pub enum RewardsMessage {
     // Rewards(/* difficulty: */ u32, /* rewards: */ f64, /* balance: */ f64),
     Rewards(u32, f64, f64),
 }
@@ -114,16 +115,24 @@ impl Miner {
         let expected_min_difficulty: u32 = args.expected_min_difficulty;
         let extra_fee_difficulty: u32 = args.extra_fee_difficulty;
         let extra_fee_percent: u64 = args.extra_fee_percent;
-        let slack_difficulty: u32 = args.slack_difficulty;
+        let messaging_diff: u32 = args.messaging_diff;
         let risk_time: u64 = args.risk_time;
 
         // MI
         let (slack_message_sender, slack_message_receiver) =
-            mpsc::unbounded_channel::<SlackMessage>();
+            mpsc::unbounded_channel::<RewardsMessage>();
+        let (discord_message_sender, discord_message_receiver) =
+            mpsc::unbounded_channel::<RewardsMessage>();
         if let Some(slack_webhook) = self.slack_webhook.clone() {
             // Handle slack messages to send
             tokio::spawn(async move {
                 slack_messaging_system(slack_webhook, slack_message_receiver).await;
+            });
+        }
+        if let Some(discord_webhook) = self.discord_webhook.clone() {
+            // Handle discord messages to send
+            tokio::spawn(async move {
+                discord_messaging_system(discord_webhook, discord_message_receiver).await;
             });
         }
 
@@ -142,9 +151,16 @@ impl Miner {
             let delta_change_string =
                 amount_u64_to_string(proof.balance.saturating_sub(last_balance));
             // notify slack channel if necessary
-            if last_difficulty >= slack_difficulty {
+            if last_difficulty >= messaging_diff {
                 if self.slack_webhook.is_some() {
-                    let _ = slack_message_sender.send(SlackMessage::Rewards(
+                    let _ = slack_message_sender.send(RewardsMessage::Rewards(
+                        last_difficulty,
+                        f64::from_str(&delta_change_string).unwrap(),
+                        f64::from_str(&curr_balance_string).unwrap(),
+                    ));
+                }
+                if self.discord_webhook.is_some() {
+                    let _ = discord_message_sender.send(RewardsMessage::Rewards(
                         last_difficulty,
                         f64::from_str(&delta_change_string).unwrap(),
                         f64::from_str(&curr_balance_string).unwrap(),
@@ -207,7 +223,7 @@ impl Miner {
                 expected_min_difficulty,
                 extra_fee_difficulty,
                 extra_fee_percent,
-                slack_difficulty,
+                messaging_diff,
             };
 
             // Build instruction set
@@ -583,13 +599,28 @@ fn format_duration(seconds: u32) -> String {
 // MI
 async fn slack_messaging_system(
     slack_webhook: String,
-    mut receiver_channel: UnboundedReceiver<SlackMessage>,
+    mut receiver_channel: UnboundedReceiver<RewardsMessage>,
 ) {
     loop {
         while let Some(slack_message) = receiver_channel.recv().await {
             match slack_message {
-                SlackMessage::Rewards(d, r, b) => {
+                RewardsMessage::Rewards(d, r, b) => {
                     slack_messaging(slack_webhook.clone(), SrcType::Solo, d, r, b).await
+                }
+            }
+        }
+    }
+}
+
+async fn discord_messaging_system(
+    discord_webhook: String,
+    mut receiver_channel: UnboundedReceiver<RewardsMessage>,
+) {
+    loop {
+        while let Some(discord_message) = receiver_channel.recv().await {
+            match discord_message {
+                RewardsMessage::Rewards(d, r, b) => {
+                    discord_messaging(discord_webhook.clone(), SrcType::Solo, d, r, b).await
                 }
             }
         }
@@ -614,8 +645,63 @@ async fn slack_messaging(
     let req = reqwest::Client::new()
         .post(slack_webhook_url)
         .json(&message);
-    if let Err(err) = req.send().await {
-        eprintln!("{}", err);
-        // error!("{}", err);
+    let mut num_retries = 0;
+    loop {
+        if let Err(err) = req.try_clone().unwrap().send().await {
+            eprintln!("Err sending slack webhook: {:?}", err);
+            // error!("Err sending slack webhook: {:?}", err);
+            if num_retries < 3 {
+                println!("retry...");
+                num_retries += 1;
+                tokio::time::sleep(Duration::from_millis(1_000)).await;
+                continue;
+            } else {
+                println!("Failed 3 attempts to send message to slack. No more retry.");
+            }
+        }
+        break;
+    }
+}
+
+async fn discord_messaging(
+    discord_webhook: String,
+    source: SrcType,
+    difficulty: u32,
+    rewards: f64,
+    balance: f64,
+) {
+    let text = format!(
+        "S: {}\nD: {}\nR: {}\nB: {}",
+        source, difficulty, rewards, balance
+    );
+
+    // You don't need a token when you are only dealing with webhooks.
+    let http = Http::new("");
+    let discord_webhook = Webhook::from_url(&http, &discord_webhook)
+        .await
+        .expect("Failed to parse discord webhook url");
+
+    // let builder = ExecuteWebhook::new().content(&text).username("Mirabot");
+    // discord_webhook.execute(&http, false, builder).await.expect("Could not execute webhook.");
+
+    let mut num_retries = 0;
+    loop {
+        // if let Err(err) = discord_webhook.execute(&http, false, builder).await {
+        if let Err(err) = discord_webhook
+            .execute(&http, false, |w| w.content(&text).username("Mirabot"))
+            .await
+        {
+            eprintln!("Err sending discord webhook: {:?}", err);
+            // error!("Err sending discord webhook: {:?}", err);
+            if num_retries < 3 {
+                println!("retry...");
+                num_retries += 1;
+                tokio::time::sleep(Duration::from_millis(1_000)).await;
+                continue;
+            } else {
+                println!("Failed 3 attempts to send message to discord. No more retry.");
+            }
+        }
+        break;
     }
 }

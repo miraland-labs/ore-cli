@@ -1,6 +1,6 @@
 [package]
 name = "more-cli"
-version = "2.2.1"
+version = "2.2.2"
 edition = "2021"
 license = "Apache-2.0"
 description = "A command line interface for ORE cryptocurrency mining. Tailored by Miraland Labs."
@@ -43,6 +43,10 @@ rand = "0.8.4"
 reqwest = { version = "0.12", features = ["json"] }
 rodio = "0.18.1"
 slack-messaging = "0.3.1"
+serenity = { version = "=0.11.7", default-features = false, features = [
+  "rustls_backend",
+  "model",
+] }
 solana-cli-config = "^1.18"
 solana-client = "^1.18"
 solana-program = "^1.18"
@@ -74,5 +78,5 @@ rpath = false
 incremental = false
 overflow-checks = false
 
-[build]
-rustflags = ["-C", "target-cpu=native"]
+# [build]
+# rustflags = ["-C", "target-cpu=native"]

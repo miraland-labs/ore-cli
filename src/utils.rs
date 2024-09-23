@@ -49,6 +49,7 @@ pub async fn get_config(client: &RpcClient) -> Config {
                 println!("retry to get config account...");
             }
         }
+        tokio::time::sleep(Duration::from_millis(500)).await;
     }
 
     *Config::try_from_bytes(&data).expect("Failed to parse config account")
